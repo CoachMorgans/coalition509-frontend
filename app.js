@@ -27,14 +27,22 @@ const API_URL = 'https://coalition509-api.onrender.com';
     const data = await res.json();
 
     if (data.ok && data.user) {
-      // Stocke la session (pas de JWT ici, juste les infos utilisateur)
+      // ✅ Utilisateur trouvé → connexion auto
       localStorage.setItem('c509_user', JSON.stringify(data.user));
       localStorage.setItem('c509_auth_source', 'bot');
 
-      // Redirige vers le dashboard si on est sur index.html
       const path = window.location.pathname;
       if (path.includes('index') || path === '/' || path.endsWith('/coalition509-frontend/')) {
         window.location.replace('dashboard.html');
+      }
+    } else if (data.ok && data.needs_registration) {
+      // ⚠️ Utilisateur inconnu dans le SaaS → redirige inscription avec téléphone pré-rempli
+      localStorage.setItem('c509_pending_phone', data.phone);
+      localStorage.setItem('c509_auth_source', 'bot_pending');
+      showToast('Complétez votre inscription sur le SaaS.', 'info');
+      const path = window.location.pathname;
+      if (!path.includes('index')) {
+        window.location.replace('index.html');
       }
     } else {
       console.error('[BOT AUTH] Échec :', data.error || 'Inconnu');
@@ -139,6 +147,10 @@ function initIndexPage() {
     return;
   }
 
+  // ── Vient du bot avec téléphone pré-rempli ? ──
+  const pendingPhone = localStorage.getItem('c509_pending_phone');
+  const authSource = localStorage.getItem('c509_auth_source');
+
   // ── Gestion des onglets Connexion / Inscription ──
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
@@ -154,6 +166,28 @@ function initIndexPage() {
         if (targetEl) targetEl.classList.add('active');
       });
     });
+  }
+
+  // Si vient du bot et pas encore inscrit → switch sur inscription + pré-remplit téléphone
+  if (pendingPhone && authSource === 'bot_pending') {
+    // Trouve et clique le bouton inscription
+    const regBtn = Array.from(tabBtns).find(b => b.dataset.tab === 'register' || b.textContent.toLowerCase().includes('inscription'));
+    if (regBtn) regBtn.click();
+
+    // Pré-remplit le champ téléphone dans le formulaire d'inscription
+    setTimeout(() => {
+      const regForm = registerForm || document.querySelector('form');
+      if (regForm) {
+        const phoneInput = findInput(regForm, ['tel', 'text'], ['phone', 'telephone'], ['téléphone', 'telephone']);
+        if (phoneInput) {
+          phoneInput.value = pendingPhone;
+          phoneInput.focus();
+        }
+      }
+      // Nettoie le flag pour éviter de re-switcher au refresh
+      localStorage.removeItem('c509_pending_phone');
+      localStorage.removeItem('c509_auth_source');
+    }, 200);
   }
 
   // ── Formulaire Connexion ──
