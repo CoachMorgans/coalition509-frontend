@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coalition 509 — Connexion</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇭🇹</text></svg>">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-logo">
+      <h1>Coalition <span>509</span></h1>
+      <p>VoteConnect Ecosystem — ChallengeFinancier™</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login">Connexion</button>
+      <button class="auth-tab" id="tab-register">Inscription</button>
+    </div>
+
+    <!-- Formulaire de connexion -->
+    <form id="login-form">
+      <div class="form-group">
+        <label for="login-phone">Numéro de téléphone</label>
+        <input type="tel" id="login-phone" placeholder="Ex: +509 34 56 78 90" required>
+      </div>
+      <div class="form-group">
+        <label for="login-pin">Code PIN</label>
+        <input type="password" id="login-pin" placeholder="Votre code PIN" required minlength="4">
+      </div>
+      <button type="submit" class="btn btn-primary">Se connecter</button>
+    </form>
+
+    <!-- Formulaire d'inscription -->
+    <form id="register-form" style="display:none;">
+      <div class="form-group">
+        <label for="reg-phone">Numéro de téléphone *</label>
+        <input type="tel" id="reg-phone" placeholder="Ex: +509 34 56 78 90" required>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label for="reg-firstname">Prénom *</label>
+          <input type="text" id="reg-firstname" placeholder="Prénom" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-lastname">Nom *</label>
+          <input type="text" id="reg-lastname" placeholder="Nom" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="reg-email">Email (optionnel)</label>
+        <input type="email" id="reg-email" placeholder="email@exemple.com">
+      </div>
+      <div class="form-group">
+        <label for="reg-pin">Code PIN *</label>
+        <input type="password" id="reg-pin" placeholder="Min. 4 caractères" required minlength="4">
+      </div>
+      <div class="form-group">
+        <label for="reg-profile">Type de profil</label>
+        <select id="reg-profile">
+          <option value="Animateur NGD">Animateur NGD</option>
+          <option value="Coalition Leader">Coalition Leader</option>
+          <option value="Agent Croire">Agent Croire</option>
+          <option value="Manager">Manager</option>
+          <option value="Admin">Admin</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label for="reg-region">Région</label>
+          <input type="text" id="reg-region" placeholder="Ex: Ouest">
+        </div>
+        <div class="form-group">
+          <label for="reg-commune">Commune</label>
+          <input type="text" id="reg-commune" placeholder="Ex: Port-au-Prince">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Créer mon compte</button>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

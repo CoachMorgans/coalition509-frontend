@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coalition 509 — Tableau de bord</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇭🇹</text></svg>">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>🇭🇹 Coalition <span>509</span></h2>
+        <p>VoteConnect | ChallengeFinancier™</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-section="overview">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          <span>Vue d'ensemble</span>
+        </div>
+        <div class="nav-item" data-section="campaigns">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+          <span>Campagnes</span>
+        </div>
+        <div class="nav-item" data-section="users">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <span>Utilisateurs</span>
+        </div>
+        <div class="nav-item" data-section="orders">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          <span>Commandes TCL</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-mini">
+          <div class="user-avatar">U</div>
+          <div class="user-info">
+            <div class="name">Chargement...</div>
+            <div class="role">—</div>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-danger" id="logout-btn" style="margin-top:10px;width:100%;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          Déconnexion
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="menu-toggle" id="mobile-menu-toggle">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <h1>Tableau de bord</h1>
+        </div>
+        <div class="topbar-actions">
+          <span class="badge badge-success">● API Connectée</span>
+        </div>
+      </div>
+
+      <!-- SECTION: OVERVIEW -->
+      <div id="section-overview" class="section active">
+        <div class="stats-grid" id="overview-stats">
+          <div class="loading"><span class="spinner"></span> Chargement des statistiques...</div>
+        </div>
+      </div>
+
+      <!-- SECTION: CAMPAIGNS -->
+      <div id="section-campaigns" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>📢 Campagnes électorales</h3>
+            <button class="btn btn-sm btn-primary" id="btn-create-campaign">+ Nouvelle campagne</button>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Type</th>
+                    <th>Région</th>
+                    <th>Date élection</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="campaigns-table-body">
+                  <tr><td colspan="6" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: USERS -->
+      <div id="section-users" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>👥 Utilisateurs</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Téléphone</th>
+                    <th>Email</th>
+                    <th>Profil</th>
+                    <th>Région</th>
+                    <th>Statut</th>
+                    <th>Inscription</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: ORDERS -->
+      <div id="section-orders" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>🛒 Commandes TCL</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>N° Commande</th>
+                    <th>Client</th>
+                    <th>Montant</th>
+                    <th>Lieu</th>
+                    <th>Statut</th>
+                    <th>Paiement</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                  <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: Create Campaign -->
+  <div class="modal-overlay" id="modal-campaign">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🚀 Nouvelle campagne</h3>
+        <button class="modal-close" id="modal-campaign-close">&times;</button>
+      </div>
+      <form id="form-campaign">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="camp-name">Nom de la campagne *</label>
+            <input type="text" id="camp-name" placeholder="Ex: Campagne Municipale 2026" required>
+          </div>
+          <div class="form-group">
+            <label for="camp-type">Type d'élection *</label>
+            <select id="camp-type" required>
+              <option value="">Sélectionnez...</option>
+              <option value="Municipale">Municipale</option>
+              <option value="Législative">Législative</option>
+              <option value="Sénatoriale">Sénatoriale</option>
+              <option value="Présidentielle">Présidentielle</option>
+              <option value="Référendum">Référendum</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label for="camp-region">Région *</label>
+              <input type="text" id="camp-region" placeholder="Ex: Ouest" required>
+            </div>
+            <div class="form-group">
+              <label for="camp-commune">Commune</label>
+              <input type="text" id="camp-commune" placeholder="Ex: Pétion-Ville">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="camp-date">Date de l'élection</label>
+            <input type="date" id="camp-date">
+          </div>
+          <div class="form-group">
+            <label for="camp-desc">Description</label>
+            <input type="text" id="camp-desc" placeholder="Courte description de la campagne">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-campaign').classList.remove('active')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer la campagne</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
