@@ -5,202 +5,611 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coalition 509 — Tableau de bord</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇭🇹</text></svg>">
+  <style>
+    /* ============================================================
+       STYLES CRITIQUES — Coalition 509 Dashboard
+       Surcharge sécurisée, compatibles avec style.css existant
+       ============================================================ */
+    :root {
+      --sidebar-w: 260px;
+      --sidebar-bg: #1a1a2e;
+      --sidebar-text: #a0a0b0;
+      --sidebar-active: #16213e;
+      --accent: #e94560;
+      --accent-hover: #d63050;
+      --success: #27ae60;
+      --card-bg: #ffffff;
+      --body-bg: #f0f2f5;
+      --text-main: #1a1a2e;
+      --text-muted: #666;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--body-bg);
+      color: var(--text-main);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      left: 0; top: 0;
+      z-index: 100;
+      transition: transform .3s ease;
+    }
+    .sidebar-brand {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .sidebar-brand h1 {
+      font-size: 18px;
+      color: #fff;
+      letter-spacing: .5px;
+    }
+    .sidebar-brand h1 span { color: var(--accent); }
+    .sidebar-brand small {
+      font-size: 11px;
+      color: var(--sidebar-text);
+      opacity: .7;
+    }
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .2s;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--sidebar-text);
+      text-decoration: none;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.05); color: #fff; }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; }
+    .nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .user-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .user-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px;
+    }
+    .user-mini .name { font-size: 13px; font-weight: 600; color: #fff; }
+    .user-mini .role { font-size: 11px; color: var(--sidebar-text); }
+    #logout-btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background .2s;
+    }
+    #logout-btn:hover { background: var(--accent-hover); }
+
+    /* ── Main ── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 24px 32px;
+      max-width: calc(100% - var(--sidebar-w));
+    }
+    .main-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .main-header h2 { font-size: 22px; font-weight: 700; }
+    .api-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #e8f5e9;
+      color: var(--success);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .api-badge::before {
+      content: '';
+      width: 8px; height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ── Sections ── */
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+
+    /* ── Stats cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+
+    /* ── Cards / Tables ── */
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+    /* ── Tables ── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th {
+      text-align: left;
+      padding: 12px 16px;
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover { background: #fafafa; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .badge-success { background: #e8f5e9; color: var(--success); }
+    .badge-info    { background: #e3f2fd; color: #1976d2; }
+    .badge-warning { background: #fff3e0; color: #f57c00; }
+    .badge-danger  { background: #ffebee; color: #c62828; }
+    .badge-secondary { background: #f5f5f5; color: #666; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--sidebar-active); color: #fff; }
+    .btn-primary:hover { background: #0f3460; }
+    .btn-secondary { background: #f0f2f5; color: var(--text-main); }
+    .btn-secondary:hover { background: #e0e0e0; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Filters ── */
+    .filters-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filters-bar input, .filters-bar select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      background: #fff;
+      min-width: 140px;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      animation: modalIn .25s ease;
+    }
+    @keyframes modalIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; } }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 { font-size: 16px; }
+    .modal-close {
+      background: none; border: none; font-size: 22px; cursor: pointer;
+      color: var(--text-muted); line-height: 1;
+    }
+    .modal-body { padding: 20px 24px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(233,69,96,.1);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer {
+      padding: 16px 24px 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* ── Pagination ── */
+    .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+
+    /* ── Loading ── */
+    .loading { text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px; }
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Mobile ── */
+    #mobile-menu-toggle {
+      display: none;
+      position: fixed;
+      top: 16px; left: 16px;
+      z-index: 110;
+      background: var(--sidebar-bg);
+      color: #fff;
+      border: none;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    @media (max-width: 768px) {
+      #mobile-menu-toggle { display: block; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; max-width: 100%; padding: 60px 16px 24px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .data-table { display: block; overflow-x: auto; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-  <div class="dashboard">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2>🇭🇹 Coalition <span>509</span></h2>
-        <p>VoteConnect | ChallengeFinancier™</p>
+
+  <!-- Mobile toggle -->
+  <button id="mobile-menu-toggle">☰</button>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>HT Coalition <span>509</span></h1>
+      <small>VoteConnect | ChallengeFinancier™</small>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-section="overview">
+        <span class="icon">⊞</span>
+        <span>Vue d'ensemble</span>
       </div>
-
-      <nav class="sidebar-nav">
-        <div class="nav-item active" data-section="overview">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-          <span>Vue d'ensemble</span>
-        </div>
-        <div class="nav-item" data-section="campaigns">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
-          <span>Campagnes</span>
-        </div>
-        <div class="nav-item" data-section="users">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-          <span>Utilisateurs</span>
-        </div>
-        <div class="nav-item" data-section="orders">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-          <span>Commandes TCL</span>
-        </div>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="user-mini">
-          <div class="user-avatar">U</div>
-          <div class="user-info">
-            <div class="name">Chargement...</div>
-            <div class="role">—</div>
-          </div>
-        </div>
-        <button class="btn btn-sm btn-danger" id="logout-btn" style="margin-top:10px;width:100%;">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-          Déconnexion
-        </button>
+      <div class="nav-item" data-section="campaigns">
+        <span class="icon">📢</span>
+        <span>Campagnes</span>
       </div>
-    </aside>
+      <div class="nav-item" data-section="users">
+        <span class="icon">👥</span>
+        <span>Utilisateurs</span>
+      </div>
+      <div class="nav-item" data-section="orders">
+        <span class="icon">🔒</span>
+        <span>Commandes TCL</span>
+      </div>
+    </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="topbar">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <button class="menu-toggle" id="mobile-menu-toggle">
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-          </button>
-          <h1>Tableau de bord</h1>
-        </div>
-        <div class="topbar-actions">
-          <span class="badge badge-success">● API Connectée</span>
+    <div class="sidebar-footer">
+      <div class="user-mini">
+        <div class="user-avatar">U</div>
+        <div>
+          <div class="name">—</div>
+          <div class="role">—</div>
         </div>
       </div>
+      <button id="logout-btn">⎋ Déconnexion</button>
+    </div>
+  </aside>
 
-      <!-- SECTION: OVERVIEW -->
-      <div id="section-overview" class="section active">
-        <div class="stats-grid" id="overview-stats">
-          <div class="loading"><span class="spinner"></span> Chargement des statistiques...</div>
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- Header -->
+    <div class="main-header">
+      <h2>Tableau de bord</h2>
+      <span class="api-badge">API CONNECTÉE</span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION : VUE D'ENSEMBLE -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="section-overview" class="section active">
+      <div id="overview-stats" class="stats-grid">
+        <div class="loading"><span class="spinner"></span> Chargement des statistiques...</div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION : CAMPAGNES -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="section-campaigns" class="section">
+      <div class="card">
+        <div class="card-header">
+          <h3>📢 Campagnes électorales</h3>
+          <button id="btn-create-campaign" class="btn btn-primary">+ Nouvelle campagne</button>
+        </div>
+
+        <!-- Filtres -->
+        <div class="filters-bar">
+          <input type="text" id="camp-filter-search" placeholder="Rechercher une campagne..." style="flex:1;min-width:200px;">
+          <select id="camp-filter-status">
+            <option value="">Tous statuts</option>
+            <option value="active">Active</option>
+            <option value="closed">Clôturée</option>
+            <option value="draft">Brouillon</option>
+          </select>
+          <input type="text" id="camp-filter-region" placeholder="Région">
+          <button id="camp-filter-apply" class="btn btn-primary">Filtrer</button>
+        </div>
+
+        <!-- Tableau -->
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Type</th>
+                <th>Région</th>
+                <th>Date élection</th>
+                <th>Statut</th>
+                <th>Prix TTC</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="campaigns-table-body">
+              <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div id="campaigns-pagination"></div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION : UTILISATEURS -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="section-users" class="section">
+      <div class="card">
+        <div class="card-header">
+          <h3>👥 Utilisateurs</h3>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Téléphone</th>
+                <th>Email</th>
+                <th>Profil</th>
+                <th>Région</th>
+                <th>Statut</th>
+                <th>Inscription</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
+    </section>
 
-      <!-- SECTION: CAMPAIGNS -->
-      <div id="section-campaigns" class="section">
-        <div class="card">
-          <div class="card-header">
-            <h3>📢 Campagnes électorales</h3>
-            <button class="btn btn-sm btn-primary" id="btn-create-campaign">+ Nouvelle campagne</button>
-          </div>
-          <div class="card-body">
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nom</th>
-                    <th>Type</th>
-                    <th>Région</th>
-                    <th>Date élection</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="campaigns-table-body">
-                  <tr><td colspan="6" class="loading"><span class="spinner"></span> Chargement...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SECTION : COMMANDES TCL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <section id="section-orders" class="section">
+      <div class="card">
+        <div class="card-header">
+          <h3>🛒 Commandes TCL</h3>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>N° Commande</th>
+                <th>Client</th>
+                <th>Montant</th>
+                <th>Lieu</th>
+                <th>Statut</th>
+                <th>Paiement</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="orders-table-body">
+              <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
+    </section>
 
-      <!-- SECTION: USERS -->
-      <div id="section-users" class="section">
-        <div class="card">
-          <div class="card-header">
-            <h3>👥 Utilisateurs</h3>
-          </div>
-          <div class="card-body">
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nom</th>
-                    <th>Téléphone</th>
-                    <th>Email</th>
-                    <th>Profil</th>
-                    <th>Région</th>
-                    <th>Statut</th>
-                    <th>Inscription</th>
-                  </tr>
-                </thead>
-                <tbody id="users-table-body">
-                  <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
+  </main>
 
-      <!-- SECTION: ORDERS -->
-      <div id="section-orders" class="section">
-        <div class="card">
-          <div class="card-header">
-            <h3>🛒 Commandes TCL</h3>
-          </div>
-          <div class="card-body">
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>N° Commande</th>
-                    <th>Client</th>
-                    <th>Montant</th>
-                    <th>Lieu</th>
-                    <th>Statut</th>
-                    <th>Paiement</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody id="orders-table-body">
-                  <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <!-- MODAL: Create Campaign -->
-  <div class="modal-overlay" id="modal-campaign">
-    <div class="modal">
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- MODAL : CRÉER UNE CAMPAGNE -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="modal-campaign" class="modal-overlay">
+    <div class="modal-box">
       <div class="modal-header">
-        <h3>🚀 Nouvelle campagne</h3>
-        <button class="modal-close" id="modal-campaign-close">&times;</button>
+        <h3>📢 Nouvelle campagne électorale</h3>
+        <button id="modal-campaign-close" class="modal-close">&times;</button>
       </div>
       <form id="form-campaign">
         <div class="modal-body">
           <div class="form-group">
-            <label for="camp-name">Nom de la campagne *</label>
-            <input type="text" id="camp-name" placeholder="Ex: Campagne Municipale 2026" required>
+            <label>Nom de la campagne *</label>
+            <input type="text" id="camp-name" placeholder="ex: Présidentielle 2026" required>
           </div>
-          <div class="form-group">
-            <label for="camp-type">Type d'élection *</label>
-            <select id="camp-type" required>
-              <option value="">Sélectionnez...</option>
-              <option value="Municipale">Municipale</option>
-              <option value="Législative">Législative</option>
-              <option value="Sénatoriale">Sénatoriale</option>
-              <option value="Présidentielle">Présidentielle</option>
-              <option value="Référendum">Référendum</option>
-            </select>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+          <div class="form-row">
             <div class="form-group">
-              <label for="camp-region">Région *</label>
-              <input type="text" id="camp-region" placeholder="Ex: Ouest" required>
+              <label>Type d'élection *</label>
+              <select id="camp-type" required>
+                <option value="">Choisir...</option>
+                <option value="presidentielle">Présidentielle</option>
+                <option value="legislative">Législative</option>
+                <option value="municipale">Municipale</option>
+                <option value="referendum">Référendum</option>
+              </select>
             </div>
             <div class="form-group">
-              <label for="camp-commune">Commune</label>
-              <input type="text" id="camp-commune" placeholder="Ex: Pétion-Ville">
+              <label>Date de l'élection</label>
+              <input type="date" id="camp-date">
             </div>
           </div>
-          <div class="form-group">
-            <label for="camp-date">Date de l'élection</label>
-            <input type="date" id="camp-date">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Région *</label>
+              <input type="text" id="camp-region" placeholder="ex: Ouest" required>
+            </div>
+            <div class="form-group">
+              <label>Commune</label>
+              <input type="text" id="camp-commune" placeholder="ex: Port-au-Prince">
+            </div>
           </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Modèle tarifaire *</label>
+              <select id="camp-pricing" required>
+                <option value="forfait">Forfait fixe</option>
+                <option value="par_bureau">Par bureau de vote</option>
+                <option value="par_electeur">Par électeur ciblé</option>
+                <option value="abonnement">Abonnement mensuel</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Prix HT (Gdes) *</label>
+              <input type="number" id="camp-price" min="0" step="100" placeholder="ex: 150000" required>
+            </div>
+          </div>
+
           <div class="form-group">
-            <label for="camp-desc">Description</label>
-            <input type="text" id="camp-desc" placeholder="Courte description de la campagne">
+            <label>Description</label>
+            <textarea id="camp-desc" rows="3" placeholder="Objectifs, cibles, notes..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
