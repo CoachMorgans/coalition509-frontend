@@ -2,7 +2,7 @@
    Coalition 509 — Frontend SaaS
    VoteConnect Ecosystem | ChallengeFinancier™
    Auteur : Coach Morgan's (Simplice KOUAME)
-   Version : 1.2.0  (Fix sélecteurs + détection robuste)
+   Version : 1.2.1  (Fix IDs onglets login-form / register-form)
    ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -64,7 +64,6 @@ function formatPhone(phone) {
   return p;
 }
 
-// Trouve un input dans un container (recherche exhaustive)
 function findInput(container, types, names, placeholderKeywords, ids) {
   if (!container) return null;
   if (ids) {
@@ -154,12 +153,16 @@ function initIndexPage() {
   tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
   tabContents = Array.from(document.querySelectorAll('.tab-content'));
 
-  // Essai 2 : si vide, cherche par rôle / data-tab
+  // Essai 2 : si vide, cherche par data-tab
   if (!tabBtns.length) {
     tabBtns = Array.from(document.querySelectorAll('[data-tab]'));
   }
   if (!tabContents.length) {
-    tabContents = Array.from(document.querySelectorAll('[id="login"], [id="register"], [id="connexion"], [id="inscription"], .login-form, .register-form, .form-login, .form-register'));
+    tabContents = Array.from(document.querySelectorAll(
+      '[id="login"], [id="register"], [id="connexion"], [id="inscription"],'
+      + '[id="login-form"], [id="register-form"], [id="connexion-form"], [id="inscription-form"],'
+      + '.login-form, .register-form, .form-login, .form-register'
+    ));
   }
 
   // Essai 3 : cherche par texte des boutons
@@ -176,38 +179,59 @@ function initIndexPage() {
   console.log('[C509] Onglets détectés :', tabBtns.length, tabBtns);
   console.log('[C509] Contenus détectés :', tabContents.length, tabContents);
 
+  // ── FONCTION SWITCH ONGLET ──
+  function switchTab(targetName) {
+    // targetName = 'login' ou 'register' (générique)
+    const isLogin = targetName === 'login' || targetName === 'connexion';
+    const isRegister = targetName === 'register' || targetName === 'inscription';
+
+    // 1. Active visuellement le bon bouton
+    tabBtns.forEach(b => {
+      const txt = b.textContent.toLowerCase();
+      const tab = (b.dataset.tab || '').toLowerCase();
+      const active = (isLogin && (txt.includes('connexion') || txt.includes('login') || tab.includes('login') || tab.includes('connexion')))
+                  || (isRegister && (txt.includes('inscription') || txt.includes('inscrire') || txt.includes('register') || tab.includes('register') || tab.includes('inscription')));
+      b.classList.toggle('active', active);
+    });
+
+    // 2. Affiche/masque les contenus par classe .active
+    tabContents.forEach(c => {
+      const id = (c.id || '').toLowerCase();
+      const show = (isLogin && (id.includes('login') || id.includes('connexion')))
+                || (isRegister && (id.includes('register') || id.includes('inscription')));
+      c.classList.toggle('active', show);
+    });
+
+    // 3. Fallback direct sur IDs connus (avec et sans -form)
+    const loginIds = ['login', 'connexion', 'login-form', 'connexion-form'];
+    const registerIds = ['register', 'inscription', 'register-form', 'inscription-form'];
+
+    loginIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = isLogin ? '' : 'none';
+    });
+    registerIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = isRegister ? '' : 'none';
+    });
+
+    console.log('[C509] Switch tab →', targetName, '| login=', isLogin, '| register=', isRegister);
+  }
+
   // Attache les listeners d'onglets
   if (tabBtns.length) {
     tabBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const target = btn.dataset.tab || btn.getAttribute('href')?.replace('#', '');
-
-        // Active visuellement le bouton
-        tabBtns.forEach(b => {
-          b.classList.remove('active');
-          if (b.style) b.style.fontWeight = 'normal';
-        });
-        btn.classList.add('active');
-        if (btn.style) btn.style.fontWeight = 'bold';
-
-        // Affiche le contenu cible
-        tabContents.forEach(c => c.classList.remove('active'));
-        if (target) {
-          const targetEl = document.getElementById(target);
-          if (targetEl) targetEl.classList.add('active');
-        }
-        // Fallback : montre/cache par ID connus
-        const loginEl = document.getElementById('login') || document.getElementById('connexion');
-        const registerEl = document.getElementById('register') || document.getElementById('inscription');
         const txt = btn.textContent.toLowerCase();
-        if (txt.includes('connexion') || txt.includes('login')) {
-          if (loginEl) loginEl.classList.add('active');
-          if (registerEl) registerEl.classList.remove('active');
-        } else if (txt.includes('inscription') || txt.includes('register')) {
-          if (registerEl) registerEl.classList.add('active');
-          if (loginEl) loginEl.classList.remove('active');
+
+        let targetName = target;
+        if (!targetName) {
+          if (txt.includes('connexion') || txt.includes('login')) targetName = 'login';
+          else if (txt.includes('inscription') || txt.includes('inscrire') || txt.includes('register')) targetName = 'register';
         }
+        if (targetName) switchTab(targetName);
       });
     });
   }
@@ -215,10 +239,6 @@ function initIndexPage() {
   // ── DÉTECTION ROBUSTE DES FORMULAIRES ──
   const allForms = Array.from(document.querySelectorAll('form'));
   console.log('[C509] Formulaires trouvés :', allForms.length);
-
-  // Stratégie : on attache les listeners sur TOUS les formulaires,
-  // et on détecte à la volée s'il s'agit de connexion ou inscription
-  // grâce au texte du bouton submit ou aux champs présents.
 
   allForms.forEach((form, idx) => {
     const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
@@ -229,7 +249,6 @@ function initIndexPage() {
 
     console.log(`[C509] Form #${idx}: btn="${btnText}" firstName=${hasFirstName} phone=${hasPhone} pin=${hasPin}`);
 
-    // Détermine le type de formulaire
     let formType = 'unknown';
     if (btnText.includes('connecter') || btnText.includes('login') || btnText.includes('connexion')) {
       formType = 'login';
@@ -242,19 +261,19 @@ function initIndexPage() {
     }
 
     if (formType === 'login') {
-      attachLoginHandler(form, tabBtns);
+      attachLoginHandler(form, tabBtns, switchTab);
     } else if (formType === 'register') {
-      attachRegisterHandler(form, tabBtns);
+      attachRegisterHandler(form, tabBtns, switchTab);
     }
   });
 
   // ── SI AUCUN FORMULAIRE DÉTECTÉ : fallback sur IDs explicites ──
   if (allForms.length === 0) {
     console.warn('[C509] Aucun <form> trouvé. Fallback sur IDs...');
-    const loginContainer = document.getElementById('login') || document.getElementById('connexion');
-    const registerContainer = document.getElementById('register') || document.getElementById('inscription');
-    if (loginContainer) attachLoginHandler(loginContainer, tabBtns);
-    if (registerContainer) attachRegisterHandler(registerContainer, tabBtns);
+    const loginContainer = document.getElementById('login') || document.getElementById('connexion') || document.getElementById('login-form') || document.getElementById('connexion-form');
+    const registerContainer = document.getElementById('register') || document.getElementById('inscription') || document.getElementById('register-form') || document.getElementById('inscription-form');
+    if (loginContainer) attachLoginHandler(loginContainer, tabBtns, switchTab);
+    if (registerContainer) attachRegisterHandler(registerContainer, tabBtns, switchTab);
   }
 
   // ── PRÉ-REMPLISSAGE BOT ──
@@ -262,14 +281,8 @@ function initIndexPage() {
   const authSource = localStorage.getItem('c509_auth_source');
 
   if (pendingPhone && authSource === 'bot_pending') {
-    // Switch sur inscription
-    const regBtn = tabBtns.find(b => {
-      const txt = b.textContent.toLowerCase();
-      return txt.includes('inscription') || txt.includes('inscrire') || txt.includes('register');
-    });
-    if (regBtn) regBtn.click();
+    switchTab('register');
 
-    // Pré-remplit le téléphone (dans tout le document)
     setTimeout(() => {
       const phoneInputs = document.querySelectorAll('input[type="tel"], input[name="phone"], input[name="telephone"], #reg-phone, #phone, #telephone');
       phoneInputs.forEach(inp => {
@@ -289,7 +302,7 @@ function initIndexPage() {
 //  HANDLER CONNEXION
 // ═══════════════════════════════════════════════════════════════
 
-function attachLoginHandler(container, tabBtns) {
+function attachLoginHandler(container, tabBtns, switchTab) {
   const form = container.tagName === 'FORM' ? container : container.querySelector('form') || container;
   if (form._c509_loginAttached) return;
   form._c509_loginAttached = true;
@@ -336,14 +349,14 @@ function attachLoginHandler(container, tabBtns) {
     }
   });
 
-  console.log('[C509] Handler connexion attaché sur', container);
+  console.log('[C509] Handler connexion attaché sur', form);
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  HANDLER INSCRIPTION
 // ═══════════════════════════════════════════════════════════════
 
-function attachRegisterHandler(container, tabBtns) {
+function attachRegisterHandler(container, tabBtns, switchTab) {
   const form = container.tagName === 'FORM' ? container : container.querySelector('form') || container;
   if (form._c509_registerAttached) return;
   form._c509_registerAttached = true;
@@ -400,17 +413,16 @@ function attachRegisterHandler(container, tabBtns) {
 
       if (res.status === 201 || data.id) {
         showToast(`Inscription réussie ! Votre ID NGD : ${data.ngd_id || '—'}`, 'success');
-        // Passe à l'onglet connexion
-        const loginBtn = tabBtns.find(b => {
-          const txt = b.textContent.toLowerCase();
-          return txt.includes('connexion') || txt.includes('connecter') || txt.includes('login');
-        });
-        if (loginBtn) loginBtn.click();
+        if (switchTab) switchTab('login');
         // Pré-remplit le téléphone dans le form de connexion
-        const loginContainer = document.getElementById('login') || document.getElementById('connexion');
-        if (loginContainer) {
-          const loginPhone = findInput(loginContainer, ['tel', 'text'], ['phone', 'telephone'], ['téléphone']);
-          if (loginPhone) loginPhone.value = phone;
+        const loginIds = ['login', 'connexion', 'login-form', 'connexion-form'];
+        for (const id of loginIds) {
+          const loginContainer = document.getElementById(id);
+          if (loginContainer) {
+            const loginPhone = findInput(loginContainer, ['tel', 'text'], ['phone', 'telephone'], ['téléphone']);
+            if (loginPhone) loginPhone.value = phone;
+            break;
+          }
         }
       } else {
         showToast(data.detail || 'Erreur lors de l\'inscription', 'error');
@@ -422,7 +434,7 @@ function attachRegisterHandler(container, tabBtns) {
     }
   });
 
-  console.log('[C509] Handler inscription attaché sur', container);
+  console.log('[C509] Handler inscription attaché sur', form);
 }
 
 // ═══════════════════════════════════════════════════════════════
