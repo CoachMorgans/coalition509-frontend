@@ -111,8 +111,15 @@ function formatPhone(phone) {
   return p;
 }
 
-// Helper pour trouver un input dans un formulaire
-function findInput(form, types, names, placeholderKeywords) {
+// Helper pour trouver un input dans un formulaire (recherche exhaustive)
+function findInput(form, types, names, placeholderKeywords, ids) {
+  // Par ID
+  if (ids) {
+    for (const id of ids) {
+      const el = form.querySelector(`#${id}`);
+      if (el) return el;
+    }
+  }
   // Par type
   for (const t of types) {
     const el = form.querySelector(`input[type="${t}"]`);
@@ -171,23 +178,65 @@ function initIndexPage() {
   // Si vient du bot et pas encore inscrit → switch sur inscription + pré-remplit téléphone
   if (pendingPhone && authSource === 'bot_pending') {
     // Trouve et clique le bouton inscription
-    const regBtn = Array.from(tabBtns).find(b => b.dataset.tab === 'register' || b.textContent.toLowerCase().includes('inscription'));
-    if (regBtn) regBtn.click();
+    const regBtn = Array.from(tabBtns).find(b => {
+      const tab = b.dataset.tab || '';
+      const txt = b.textContent.toLowerCase();
+      return tab === 'register' || tab === 'inscription' || txt.includes('inscription') || txt.includes('inscri');
+    });
+    if (regBtn) {
+      regBtn.click();
+    } else {
+      // Fallback : cherche un lien ou un élément cliquable avec "inscription"
+      const altReg = document.querySelector('[data-tab="register"], [data-tab="inscription"], a[href="#register"], a[href="#inscription"]');
+      if (altReg) altReg.click();
+    }
 
-    // Pré-remplit le champ téléphone dans le formulaire d'inscription
-    setTimeout(() => {
-      const regForm = registerForm || document.querySelector('form');
+    // Pré-remplit le champ téléphone dans le formulaire d'inscription (plusieurs tentatives)
+    const tryFillPhone = (attempt = 1) => {
+      const allForms = document.querySelectorAll('form');
+      let regForm = null;
+      for (const form of allForms) {
+        // Le formulaire d'inscription a généralement un champ prénom/nom
+        const hasName = form.querySelector('input[name="first_name"], input[name="prenom"], input[name="nom"], input[id*="prenom"], input[id*="nom"]');
+        if (hasName) { regForm = form; break; }
+      }
+      if (!regForm && allForms.length > 1) regForm = allForms[allForms.length - 1]; // dernier form = inscription
+      if (!regForm) regForm = document.querySelector('form');
+
       if (regForm) {
-        const phoneInput = findInput(regForm, ['tel', 'text'], ['phone', 'telephone'], ['téléphone', 'telephone']);
+        const phoneInput = findInput(
+          regForm,
+          ['tel', 'text'],
+          ['phone', 'telephone', 'tel'],
+          ['téléphone', 'telephone', 'phone', 'numéro', 'numero'],
+          ['reg-phone', 'phone', 'telephone', 'tel', 'reg-tel', 'inscription-phone']
+        );
         if (phoneInput) {
           phoneInput.value = pendingPhone;
           phoneInput.focus();
+          // Nettoie le flag SEULEMENT si l'input a été trouvé et rempli
+          localStorage.removeItem('c509_pending_phone');
+          localStorage.removeItem('c509_auth_source');
+          showToast('Votre numéro est pré-rempli. Complétez votre inscription.', 'info');
+          return;
         }
       }
-      // Nettoie le flag pour éviter de re-switcher au refresh
-      localStorage.removeItem('c509_pending_phone');
-      localStorage.removeItem('c509_auth_source');
-    }, 200);
+      // Réessaie jusqu'à 5 fois (le DOM peut mettre du temps à switcher d'onglet)
+      if (attempt < 5) {
+        setTimeout(() => tryFillPhone(attempt + 1), 300);
+      } else {
+        // Dernier recours : cherche dans TOUT le document
+        const anyPhone = document.querySelector('#reg-phone, #phone, #telephone, input[type="tel"]');
+        if (anyPhone) {
+          anyPhone.value = pendingPhone;
+          anyPhone.focus();
+          localStorage.removeItem('c509_pending_phone');
+          localStorage.removeItem('c509_auth_source');
+          showToast('Votre numéro est pré-rempli. Complétez votre inscription.', 'info');
+        }
+      }
+    };
+    setTimeout(() => tryFillPhone(), 300);
   }
 
   // ── Formulaire Connexion ──
