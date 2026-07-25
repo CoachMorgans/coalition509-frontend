@@ -2,7 +2,7 @@
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier™
  Auteur : Coach Morgan's (Simplice KOUAME)
- Version : 1.3.0 (Routes API réelles connectées)
+ Version : 1.3.1 (Fix NaN + Campagnes tarifées + Pagination)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -75,8 +75,13 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatCurrency(n) {
+  if (n === null || n === undefined || isNaN(Number(n))) return '0 Gdes';
+  return Number(n).toLocaleString('fr-FR') + ' Gdes';
+}
+
 function formatNumber(n) {
-  if (n === null || n === undefined) return '0';
+  if (n === null || n === undefined || isNaN(Number(n))) return '0';
   return Number(n).toLocaleString('fr-FR');
 }
 
@@ -492,7 +497,6 @@ function updateSidebarProfile() {
   if (roleEl) roleEl.textContent = user.profile_type || user.role || 'Animateur NGD';
   if (avatarEl) avatarEl.textContent = (user.first_name?.[0] || 'U').toUpperCase();
 
-  // Mettre à jour aussi les champs profil si présents
   const setText = (selector, text) => {
     const el = document.querySelector(selector);
     if (el) el.textContent = text || '—';
@@ -525,19 +529,22 @@ async function loadOverviewStats() {
     if (!res.ok) throw new Error('Erreur stats');
     const data = await res.json();
 
+    // FIX NaN : on passe le nombre brut à formatCurrency, pas une string concaténée
     const stats = [
-      { label: 'Utilisateurs actifs', value: data.total_users || 0, icon: '👥', color: '#3498db' },
-      { label: 'Campagnes actives', value: data.total_campaigns || 0, icon: '📢', color: '#e74c3c' },
-      { label: 'Commandes TCL', value: data.total_orders || 0, icon: '🛒', color: '#f39c12' },
-      { label: 'Revenus payés', value: (data.total_revenue || 0) + ' Gdes', icon: '💰', color: '#27ae60' },
-      { label: 'Groupes actifs', value: data.total_groups || 0, icon: '👥', color: '#9b59b6' },
-      { label: 'Retraits en attente', value: data.pending_withdrawals || 0, icon: '⏳', color: '#e67e22' },
+      { label: 'Utilisateurs actifs', value: data.total_users || 0, icon: '👥', color: '#3498db', fmt: 'num' },
+      { label: 'Campagnes actives', value: data.total_campaigns || 0, icon: '📢', color: '#e74c3c', fmt: 'num' },
+      { label: 'Commandes TCL', value: data.total_orders || 0, icon: '🛒', color: '#f39c12', fmt: 'num' },
+      { label: 'Revenus payés', value: data.total_revenue || 0, icon: '💰', color: '#27ae60', fmt: 'cur' },
+      { label: 'Groupes actifs', value: data.total_groups || 0, icon: '👥', color: '#9b59b6', fmt: 'num' },
+      { label: 'Retraits en attente', value: data.pending_withdrawals || 0, icon: '⏳', color: '#e67e22', fmt: 'num' },
     ];
 
     container.innerHTML = stats.map(s => `
       <div class="stat-card" style="border-left: 4px solid ${s.color};">
         <div class="stat-icon" style="font-size:28px;margin-bottom:8px;">${s.icon}</div>
-        <div class="stat-value" style="font-size:28px;font-weight:700;color:${s.color};">${formatNumber(s.value)}</div>
+        <div class="stat-value" style="font-size:28px;font-weight:700;color:${s.color};">
+          ${s.fmt === 'cur' ? formatCurrency(s.value) : formatNumber(s.value)}
+        </div>
         <div class="stat-label" style="font-size:13px;color:#666;margin-top:4px;">${s.label}</div>
       </div>
     `).join('');
@@ -546,38 +553,109 @@ async function loadOverviewStats() {
   }
 }
 
-// ── Campagnes ──
+// ═══════════════════════════════════════════════════════════════
+// CAMPAGNES — AVEC TARIFICATION & PAGINATION
+// ═══════════════════════════════════════════════════════════════
+
+let campaignsState = {
+  page: 1,
+  perPage: 10,
+  total: 0,
+  data: [],
+  filters: { search: '', status: '', region: '' }
+};
+
 async function loadCampaigns() {
   const tbody = document.getElementById('campaigns-table-body');
+  const paginationEl = document.getElementById('campaigns-pagination');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
 
   try {
-    const res = await apiFetch('/api/v1/campaigns');
+    const q = new URLSearchParams({
+      page: campaignsState.page,
+      per_page: campaignsState.perPage,
+      ...(campaignsState.filters.search && { search: campaignsState.filters.search }),
+      ...(campaignsState.filters.status && { status: campaignsState.filters.status }),
+      ...(campaignsState.filters.region && { region: campaignsState.filters.region })
+    });
+    const res = await apiFetch(`/api/v1/campaigns?${q}`);
     if (!res.ok) throw new Error('Erreur campagnes');
     const data = await res.json();
 
-    if (!Array.isArray(data) || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#888;">Aucune campagne trouvée.</td></tr>';
+    // Gère réponse {campaigns:[], total: N} OU array direct
+    const list = Array.isArray(data) ? data : (data.campaigns || []);
+    campaignsState.total = Array.isArray(data) ? list.length : (data.total || list.length);
+    campaignsState.data = list;
+
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">Aucune campagne trouvée.</td></tr>';
+      if (paginationEl) paginationEl.innerHTML = '';
       return;
     }
 
-    tbody.innerHTML = data.map(c => `
+    tbody.innerHTML = list.map(c => `
       <tr>
         <td><strong>${escapeHtml(c.name)}</strong><br><small style="color:#888;">${c.slug || ''}</small></td>
         <td><span class="badge badge-info">${c.election_type || '—'}</span></td>
         <td>${escapeHtml(c.region || '—')}${c.commune ? `<br><small>${escapeHtml(c.commune)}</small>` : ''}</td>
         <td>${formatDate(c.election_date)}</td>
         <td><span class="badge ${c.status === 'active' ? 'badge-success' : 'badge-secondary'}">${c.status || '—'}</span></td>
+        <td>${formatCurrency(c.price_total || c.price_ht || 0)}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="viewCampaign('${c.id}')" title="Voir">👁</button>
           ${canManageCampaigns() ? `<button class="btn btn-sm btn-primary" onclick="editCampaign('${c.id}')" title="Modifier">✎</button>` : ''}
         </td>
       </tr>
     `).join('');
+
+    renderCampaignPagination();
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="6" class="loading" style="color:#e74c3c;">⚠️ Erreur de chargement.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="loading" style="color:#e74c3c;">⚠️ Erreur de chargement.</td></tr>';
   }
+}
+
+function renderCampaignPagination() {
+  const el = document.getElementById('campaigns-pagination');
+  if (!el) return;
+  const totalPages = Math.ceil(campaignsState.total / campaignsState.perPage) || 1;
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+  let html = '<div class="pagination" style="display:flex;gap:6px;justify-content:center;margin-top:16px;">';
+  html += `<button class="btn btn-sm" ${campaignsState.page === 1 ? 'disabled' : ''} onclick="changeCampaignPage(${campaignsState.page - 1})">◀ Préc</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= campaignsState.page - 1 && i <= campaignsState.page + 1)) {
+      html += `<button class="btn btn-sm ${i === campaignsState.page ? 'btn-primary' : 'btn-secondary'}" onclick="changeCampaignPage(${i})">${i}</button>`;
+    } else if (i === campaignsState.page - 2 || i === campaignsState.page + 2) {
+      html += `<span>...</span>`;
+    }
+  }
+  html += `<button class="btn btn-sm" ${campaignsState.page === totalPages ? 'disabled' : ''} onclick="changeCampaignPage(${campaignsState.page + 1})">Suiv ▶</button>`;
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function changeCampaignPage(p) {
+  campaignsState.page = p;
+  loadCampaigns();
+}
+
+function setupCampaignFilters() {
+  const searchInp = document.getElementById('camp-filter-search');
+  const statusSel = document.getElementById('camp-filter-status');
+  const regionInp = document.getElementById('camp-filter-region');
+  const applyBtn = document.getElementById('camp-filter-apply');
+
+  const apply = () => {
+    campaignsState.filters.search = searchInp?.value.trim() || '';
+    campaignsState.filters.status = statusSel?.value || '';
+    campaignsState.filters.region = regionInp?.value.trim() || '';
+    campaignsState.page = 1;
+    loadCampaigns();
+  };
+
+  if (applyBtn) applyBtn.addEventListener('click', apply);
+  if (searchInp) searchInp.addEventListener('keyup', (e) => { if (e.key === 'Enter') apply(); });
 }
 
 function canManageCampaigns() {
@@ -630,7 +708,9 @@ function setupCampaignModal() {
         region: document.getElementById('camp-region')?.value.trim(),
         commune: document.getElementById('camp-commune')?.value.trim() || null,
         election_date: document.getElementById('camp-date')?.value || null,
-        description: document.getElementById('camp-desc')?.value.trim() || null
+        description: document.getElementById('camp-desc')?.value.trim() || null,
+        price_ht: Number(document.getElementById('camp-price')?.value || 0),
+        pricing_model: document.getElementById('camp-pricing')?.value || 'forfait'
       };
 
       if (!payload.name || !payload.election_type || !payload.region) {
