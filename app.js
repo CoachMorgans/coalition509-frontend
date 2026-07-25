@@ -2,7 +2,7 @@
    Coalition 509 — Frontend SaaS
    VoteConnect Ecosystem | ChallengeFinancier™
    Auteur : Coach Morgan's (Simplice KOUAME)
-   Version : 1.2.1  (Fix IDs onglets login-form / register-form)
+   Version : 1.2.1  (Fix IDs onglets login-form / register-form + scroll)
    ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -149,11 +149,9 @@ function initIndexPage() {
   let tabBtns = [];
   let tabContents = [];
 
-  // Essai 1 : classes attendues
   tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
   tabContents = Array.from(document.querySelectorAll('.tab-content'));
 
-  // Essai 2 : si vide, cherche par data-tab
   if (!tabBtns.length) {
     tabBtns = Array.from(document.querySelectorAll('[data-tab]'));
   }
@@ -165,7 +163,6 @@ function initIndexPage() {
     ));
   }
 
-  // Essai 3 : cherche par texte des boutons
   if (!tabBtns.length) {
     const allBtns = document.querySelectorAll('button, a, div[role="tab"], .nav-link');
     allBtns.forEach(btn => {
@@ -181,11 +178,9 @@ function initIndexPage() {
 
   // ── FONCTION SWITCH ONGLET ──
   function switchTab(targetName) {
-    // targetName = 'login' ou 'register' (générique)
     const isLogin = targetName === 'login' || targetName === 'connexion';
     const isRegister = targetName === 'register' || targetName === 'inscription';
 
-    // 1. Active visuellement le bon bouton
     tabBtns.forEach(b => {
       const txt = b.textContent.toLowerCase();
       const tab = (b.dataset.tab || '').toLowerCase();
@@ -194,7 +189,6 @@ function initIndexPage() {
       b.classList.toggle('active', active);
     });
 
-    // 2. Affiche/masque les contenus par classe .active
     tabContents.forEach(c => {
       const id = (c.id || '').toLowerCase();
       const show = (isLogin && (id.includes('login') || id.includes('connexion')))
@@ -202,7 +196,6 @@ function initIndexPage() {
       c.classList.toggle('active', show);
     });
 
-    // 3. Fallback direct sur IDs connus (avec et sans -form)
     const loginIds = ['login', 'connexion', 'login-form', 'connexion-form'];
     const registerIds = ['register', 'inscription', 'register-form', 'inscription-form'];
 
@@ -215,17 +208,15 @@ function initIndexPage() {
       if (el) el.style.display = isRegister ? '' : 'none';
     });
 
-    console.log('[C509] Switch tab →', targetName, '| login=', isLogin, '| register=', isRegister);
+    console.log('[C509] Switch tab →', targetName);
   }
 
-  // Attache les listeners d'onglets
   if (tabBtns.length) {
     tabBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         const target = btn.dataset.tab || btn.getAttribute('href')?.replace('#', '');
         const txt = btn.textContent.toLowerCase();
-
         let targetName = target;
         if (!targetName) {
           if (txt.includes('connexion') || txt.includes('login')) targetName = 'login';
@@ -267,7 +258,6 @@ function initIndexPage() {
     }
   });
 
-  // ── SI AUCUN FORMULAIRE DÉTECTÉ : fallback sur IDs explicites ──
   if (allForms.length === 0) {
     console.warn('[C509] Aucun <form> trouvé. Fallback sur IDs...');
     const loginContainer = document.getElementById('login') || document.getElementById('connexion') || document.getElementById('login-form') || document.getElementById('connexion-form');
@@ -282,7 +272,6 @@ function initIndexPage() {
 
   if (pendingPhone && authSource === 'bot_pending') {
     switchTab('register');
-
     setTimeout(() => {
       const phoneInputs = document.querySelectorAll('input[type="tel"], input[name="phone"], input[name="telephone"], #reg-phone, #phone, #telephone');
       phoneInputs.forEach(inp => {
@@ -414,7 +403,6 @@ function attachRegisterHandler(container, tabBtns, switchTab) {
       if (res.status === 201 || data.id) {
         showToast(`Inscription réussie ! Votre ID NGD : ${data.ngd_id || '—'}`, 'success');
         if (switchTab) switchTab('login');
-        // Pré-remplit le téléphone dans le form de connexion
         const loginIds = ['login', 'connexion', 'login-form', 'connexion-form'];
         for (const id of loginIds) {
           const loginContainer = document.getElementById(id);
