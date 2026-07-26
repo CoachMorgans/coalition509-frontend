@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.3.3 (Fix syntax error + campaigns debug)
+ Version: 1.3.4 (Fix users/orders array parsing)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -9,691 +9,693 @@ const API_URL = 'https://coalition509-api.onrender.com';
 /* ---------- UTILITAIRES ---------- */
 
 function showToast(message, type) {
-  type = type || 'info';
-  var existing = document.querySelector('.c509-toast');
-  if (existing) existing.remove();
-  var toast = document.createElement('div');
-  toast.className = 'c509-toast c509-toast--' + type;
-  toast.textContent = message;
-  toast.style.cssText = 'position:fixed;top:20px;right:20px;padding:14px 24px;border-radius:8px;color:white;font-weight:600;z-index:9999;animation:slideIn 0.3s ease;max-width:320px;word-wrap:break-word;';
-  toast.style.background = type === 'error' ? '#e74c3c' : type === 'success' ? '#27ae60' : '#2980b9';
-  document.body.appendChild(toast);
-  setTimeout(function() {
-    toast.style.animation = 'slideOut 0.3s ease forwards';
-    setTimeout(function() { toast.remove(); }, 300);
-  }, 4000);
+ type = type || 'info';
+ var existing = document.querySelector('.c509-toast');
+ if (existing) existing.remove();
+ var toast = document.createElement('div');
+ toast.className = 'c509-toast c509-toast--' + type;
+ toast.textContent = message;
+ toast.style.cssText = 'position:fixed;top:20px;right:20px;padding:14px 24px;border-radius:8px;color:white;font-weight:600;z-index:9999;animation:slideIn 0.3s ease;max-width:320px;word-wrap:break-word;';
+ toast.style.background = type === 'error' ? '#e74c3c' : type === 'success' ? '#27ae60' : '#2980b9';
+ document.body.appendChild(toast);
+ setTimeout(function() {
+ toast.style.animation = 'slideOut 0.3s ease forwards';
+ setTimeout(function() { toast.remove(); }, 300);
+ }, 4000);
 }
 
 function getCurrentUser() {
-  var raw = localStorage.getItem('c509_user');
-  return raw ? JSON.parse(raw) : null;
+ var raw = localStorage.getItem('c509_user');
+ return raw ? JSON.parse(raw) : null;
 }
 
 function setCurrentUser(user) {
-  localStorage.setItem('c509_user', JSON.stringify(user));
+ localStorage.setItem('c509_user', JSON.stringify(user));
 }
 
 function isLoggedIn() {
-  return !!getCurrentUser();
+ return !!getCurrentUser();
 }
 
 function logout() {
-  localStorage.removeItem('c509_user');
-  localStorage.removeItem('c509_auth_source');
-  localStorage.removeItem('c509_jwt');
-  window.location.href = 'index.html';
+ localStorage.removeItem('c509_user');
+ localStorage.removeItem('c509_auth_source');
+ localStorage.removeItem('c509_jwt');
+ window.location.href = 'index.html';
 }
 
 function formatPhone(phone) {
-  if (!phone) return '';
-  var p = phone.replace(/\s/g, '');
-  if (p.startsWith('00')) return '+' + p.slice(2);
-  if (p.startsWith('225') && p.length === 11) return '+225 ' + p.slice(3, 5) + ' ' + p.slice(5, 8) + ' ' + p.slice(8);
-  return p;
+ if (!phone) return '';
+ var p = phone.replace(/\s/g, '');
+ if (p.startsWith('00')) return '+' + p.slice(2);
+ if (p.startsWith('225') && p.length === 11) return '+225 ' + p.slice(3, 5) + ' ' + p.slice(5, 8) + ' ' + p.slice(8);
+ return p;
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  var d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+ if (!dateStr) return '—';
+ var d = new Date(dateStr);
+ if (isNaN(d)) return dateStr;
+ return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function formatCurrency(n) {
-  if (n === null || n === undefined || isNaN(Number(n))) return '0 Gdes';
-  return Number(n).toLocaleString('fr-FR') + ' Gdes';
+ if (n === null || n === undefined || isNaN(Number(n))) return '0 Gdes';
+ return Number(n).toLocaleString('fr-FR') + ' Gdes';
 }
 
 function formatNumber(n) {
-  if (n === null || n === undefined || isNaN(Number(n))) return '0';
-  return Number(n).toLocaleString('fr-FR');
+ if (n === null || n === undefined || isNaN(Number(n))) return '0';
+ return Number(n).toLocaleString('fr-FR');
 }
 
 function getAuthHeaders() {
-  var jwt = localStorage.getItem('c509_jwt');
-  return jwt
-    ? { 'Authorization': 'Bearer ' + jwt, 'Content-Type': 'application/json' }
-    : { 'Content-Type': 'application/json' };
+ var jwt = localStorage.getItem('c509_jwt');
+ return jwt
+ ? { 'Authorization': 'Bearer ' + jwt, 'Content-Type': 'application/json' }
+ : { 'Content-Type': 'application/json' };
 }
 
 function apiFetch(path, opts) {
-  opts = opts || {};
-  var url = API_URL + path;
-  console.log('[API] ' + (opts.method || 'GET') + ' ' + url);
-  return fetch(url, {
-    method: opts.method || 'GET',
-    headers: Object.assign(getAuthHeaders(), opts.headers || {}),
-    body: opts.body || undefined
-  }).then(function(res) {
-    console.log('[API] Response ' + res.status + ' for ' + path);
-    if (res.status === 401) {
-      showToast('Session expiree. Reconnectez-vous.', 'error');
-      setTimeout(logout, 1500);
-      throw new Error('Unauthorized');
-    }
-    return res;
-  });
+ opts = opts || {};
+ var url = API_URL + path;
+ console.log('[API] ' + (opts.method || 'GET') + ' ' + url);
+ return fetch(url, {
+ method: opts.method || 'GET',
+ headers: Object.assign(getAuthHeaders(), opts.headers || {}),
+ body: opts.body || undefined
+ }).then(function(res) {
+ console.log('[API] Response ' + res.status + ' for ' + path);
+ if (res.status === 401) {
+ showToast('Session expiree. Reconnectez-vous.', 'error');
+ setTimeout(logout, 1500);
+ throw new Error('Unauthorized');
+ }
+ return res;
+ });
 }
 
 function findInput(container, types, names, placeholderKeywords, ids) {
-  if (!container) return null;
-  var i, el;
-  if (ids) {
-    for (i = 0; i < ids.length; i++) {
-      el = container.querySelector('#' + ids[i]);
-      if (el) return el;
-    }
-  }
-  for (i = 0; i < types.length; i++) {
-    el = container.querySelector('input[type="' + types[i] + '"]');
-    if (el) return el;
-  }
-  for (i = 0; i < names.length; i++) {
-    el = container.querySelector('input[name="' + names[i] + '"]');
-    if (el) return el;
-  }
-  if (placeholderKeywords) {
-    var inputs = container.querySelectorAll('input');
-    for (i = 0; i < inputs.length; i++) {
-      var ph = (inputs[i].placeholder || '').toLowerCase();
-      for (var j = 0; j < placeholderKeywords.length; j++) {
-        if (ph.indexOf(placeholderKeywords[j]) !== -1) return inputs[i];
-      }
-    }
-  }
-  return null;
+ if (!container) return null;
+ var i, el;
+ if (ids) {
+ for (i = 0; i < ids.length; i++) {
+ el = container.querySelector('#' + ids[i]);
+ if (el) return el;
+ }
+ }
+ for (i = 0; i < types.length; i++) {
+ el = container.querySelector('input[type="' + types[i] + '"]');
+ if (el) return el;
+ }
+ for (i = 0; i < names.length; i++) {
+ el = container.querySelector('input[name="' + names[i] + '"]');
+ if (el) return el;
+ }
+ if (placeholderKeywords) {
+ var inputs = container.querySelectorAll('input');
+ for (i = 0; i < inputs.length; i++) {
+ var ph = (inputs[i].placeholder || '').toLowerCase();
+ for (var j = 0; j < placeholderKeywords.length; j++) {
+ if (ph.indexOf(placeholderKeywords[j]) !== -1) return inputs[i];
+ }
+ }
+ }
+ return null;
 }
 
 /* ---------- AUTO-AUTH BOT ---------- */
 
 (function autoAuthFromBot() {
-  var params = new URLSearchParams(window.location.search);
-  var botToken = params.get('bot_auth');
-  if (!botToken) return;
-  fetch(API_URL + '/api/auth/verify-bot-token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: botToken })
-  }).then(function(res) { return res.json(); }).then(function(data) {
-    if (data.ok && data.user) {
-      localStorage.setItem('c509_user', JSON.stringify(data.user));
-      localStorage.setItem('c509_auth_source', 'bot');
-      if (data.access_token) localStorage.setItem('c509_jwt', data.access_token);
-      var path = window.location.pathname;
-      if (path.includes('index') || path === '/' || path.endsWith('/coalition509-frontend/')) {
-        window.location.replace('dashboard.html');
-      }
-    } else if (data.ok && data.needs_registration) {
-      localStorage.setItem('c509_pending_phone', data.phone);
-      localStorage.setItem('c509_auth_source', 'bot_pending');
-      showToast('Completez votre inscription sur le SaaS.', 'info');
-      if (!window.location.pathname.includes('index')) {
-        window.location.replace('index.html');
-      }
-    } else {
-      console.error('[BOT AUTH] Echec :', data.error || 'Inconnu');
-      showToast('Lien expire ou invalide. Connectez-vous manuellement.', 'error');
-    }
-  }).catch(function(e) {
-    console.error('[BOT AUTH] Erreur reseau :', e);
-    showToast('Erreur de connexion au serveur.', 'error');
-  });
+ var params = new URLSearchParams(window.location.search);
+ var botToken = params.get('bot_auth');
+ if (!botToken) return;
+ fetch(API_URL + '/api/auth/verify-bot-token', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({ token: botToken })
+ }).then(function(res) { return res.json(); }).then(function(data) {
+ if (data.ok && data.user) {
+ localStorage.setItem('c509_user', JSON.stringify(data.user));
+ localStorage.setItem('c509_auth_source', 'bot');
+ if (data.access_token) localStorage.setItem('c509_jwt', data.access_token);
+ var path = window.location.pathname;
+ if (path.includes('index') || path === '/' || path.endsWith('/coalition509-frontend/')) {
+ window.location.replace('dashboard.html');
+ }
+ } else if (data.ok && data.needs_registration) {
+ localStorage.setItem('c509_pending_phone', data.phone);
+ localStorage.setItem('c509_auth_source', 'bot_pending');
+ showToast('Completez votre inscription sur le SaaS.', 'info');
+ if (!window.location.pathname.includes('index')) {
+ window.location.replace('index.html');
+ }
+ } else {
+ console.error('[BOT AUTH] Echec :', data.error || 'Inconnu');
+ showToast('Lien expire ou invalide. Connectez-vous manuellement.', 'error');
+ }
+ }).catch(function(e) {
+ console.error('[BOT AUTH] Erreur reseau :', e);
+ showToast('Erreur de connexion au serveur.', 'error');
+ });
 })();
 
 /* ---------- PAGE INDEX ---------- */
 
 function initIndexPage() {
-  if (isLoggedIn()) {
-    window.location.replace('dashboard.html');
-    return;
-  }
+ if (isLoggedIn()) {
+ window.location.replace('dashboard.html');
+ return;
+ }
 
-  var tabBtns = Array.from(document.querySelectorAll('.tab-btn, [data-tab]'));
-  var tabContents = Array.from(document.querySelectorAll('.tab-content, #login, #register, #connexion, #inscription, #login-form, #register-form, #connexion-form, #inscription-form, .login-form, .register-form'));
+ var tabBtns = Array.from(document.querySelectorAll('.tab-btn, [data-tab]'));
+ var tabContents = Array.from(document.querySelectorAll('.tab-content, #login, #register, #connexion, #inscription, #login-form, #register-form, #connexion-form, #inscription-form, .login-form, .register-form'));
 
-  if (!tabBtns.length) {
-    var allBtns = document.querySelectorAll('button, a, div[role="tab"], .nav-link');
-    allBtns.forEach(function(btn) {
-      var txt = btn.textContent.toLowerCase().trim();
-      if (txt.indexOf('connexion') !== -1 || txt.indexOf('inscription') !== -1 || txt.indexOf('login') !== -1 || txt.indexOf('register') !== -1) {
-        tabBtns.push(btn);
-      }
-    });
-  }
+ if (!tabBtns.length) {
+ var allBtns = document.querySelectorAll('button, a, div[role="tab"], .nav-link');
+ allBtns.forEach(function(btn) {
+ var txt = btn.textContent.toLowerCase().trim();
+ if (txt.indexOf('connexion') !== -1 || txt.indexOf('inscription') !== -1 || txt.indexOf('login') !== -1 || txt.indexOf('register') !== -1) {
+ tabBtns.push(btn);
+ }
+ });
+ }
 
-  function switchTab(targetName) {
-    var isLogin = targetName === 'login' || targetName === 'connexion';
-    var isRegister = targetName === 'register' || targetName === 'inscription';
-    tabBtns.forEach(function(b) {
-      var txt = b.textContent.toLowerCase();
-      var tab = (b.dataset.tab || '').toLowerCase();
-      var active = (isLogin && (txt.indexOf('connexion') !== -1 || txt.indexOf('login') !== -1 || tab.indexOf('login') !== -1 || tab.indexOf('connexion') !== -1))
-        || (isRegister && (txt.indexOf('inscription') !== -1 || txt.indexOf('inscrire') !== -1 || txt.indexOf('register') !== -1 || tab.indexOf('register') !== -1 || tab.indexOf('inscription') !== -1));
-      b.classList.toggle('active', active);
-    });
-    tabContents.forEach(function(c) {
-      var id = (c.id || '').toLowerCase();
-      var show = (isLogin && (id.indexOf('login') !== -1 || id.indexOf('connexion') !== -1))
-        || (isRegister && (id.indexOf('register') !== -1 || id.indexOf('inscription') !== -1));
-      c.classList.toggle('active', show);
-      c.style.display = show ? '' : 'none';
-    });
-  }
+ function switchTab(targetName) {
+ var isLogin = targetName === 'login' || targetName === 'connexion';
+ var isRegister = targetName === 'register' || targetName === 'inscription';
+ tabBtns.forEach(function(b) {
+ var txt = b.textContent.toLowerCase();
+ var tab = (b.dataset.tab || '').toLowerCase();
+ var active = (isLogin && (txt.indexOf('connexion') !== -1 || txt.indexOf('login') !== -1 || tab.indexOf('login') !== -1 || tab.indexOf('connexion') !== -1))
+ || (isRegister && (txt.indexOf('inscription') !== -1 || txt.indexOf('inscrire') !== -1 || txt.indexOf('register') !== -1 || tab.indexOf('register') !== -1 || tab.indexOf('inscription') !== -1));
+ b.classList.toggle('active', active);
+ });
+ tabContents.forEach(function(c) {
+ var id = (c.id || '').toLowerCase();
+ var show = (isLogin && (id.indexOf('login') !== -1 || id.indexOf('connexion') !== -1))
+ || (isRegister && (id.indexOf('register') !== -1 || id.indexOf('inscription') !== -1));
+ c.classList.toggle('active', show);
+ c.style.display = show ? '' : 'none';
+ });
+ }
 
-  if (tabBtns.length) {
-    tabBtns.forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        var target = btn.dataset.tab || (btn.getAttribute('href') || '').replace('#', '');
-        var txt = btn.textContent.toLowerCase();
-        var targetName = target;
-        if (!targetName) {
-          if (txt.indexOf('connexion') !== -1 || txt.indexOf('login') !== -1) targetName = 'login';
-          else if (txt.indexOf('inscription') !== -1 || txt.indexOf('inscrire') !== -1 || txt.indexOf('register') !== -1) targetName = 'register';
-        }
-        if (targetName) switchTab(targetName);
-      });
-    });
-  }
+ if (tabBtns.length) {
+ tabBtns.forEach(function(btn) {
+ btn.addEventListener('click', function(e) {
+ e.preventDefault();
+ var target = btn.dataset.tab || (btn.getAttribute('href') || '').replace('#', '');
+ var txt = btn.textContent.toLowerCase();
+ var targetName = target;
+ if (!targetName) {
+ if (txt.indexOf('connexion') !== -1 || txt.indexOf('login') !== -1) targetName = 'login';
+ else if (txt.indexOf('inscription') !== -1 || txt.indexOf('inscrire') !== -1 || txt.indexOf('register') !== -1) targetName = 'register';
+ }
+ if (targetName) switchTab(targetName);
+ });
+ });
+ }
 
-  var allForms = Array.from(document.querySelectorAll('form'));
-  allForms.forEach(function(form) {
-    var submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
-    var btnText = (submitBtn ? (submitBtn.textContent || submitBtn.value) : '').toLowerCase();
-    var hasFirstName = !!form.querySelector('input[name="first_name"], input[name="prenom"], input[id*="prenom"], input[id*="first"]');
-    var hasPhone = !!form.querySelector('input[type="tel"], input[name="phone"], input[name="telephone"]');
-    var hasPin = !!form.querySelector('input[type="password"], input[name="pin"], input[name="code"]');
-    var formType = 'unknown';
-    if (btnText.indexOf('connecter') !== -1 || btnText.indexOf('login') !== -1 || btnText.indexOf('connexion') !== -1) {
-      formType = 'login';
-    } else if (btnText.indexOf('inscrire') !== -1 || btnText.indexOf('register') !== -1 || btnText.indexOf('inscription') !== -1) {
-      formType = 'register';
-    } else if (hasFirstName) {
-      formType = 'register';
-    } else if (hasPhone && hasPin && !hasFirstName) {
-      formType = 'login';
-    }
-    if (formType === 'login') attachLoginHandler(form);
-    else if (formType === 'register') attachRegisterHandler(form);
-  });
+ var allForms = Array.from(document.querySelectorAll('form'));
+ allForms.forEach(function(form) {
+ var submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+ var btnText = (submitBtn ? (submitBtn.textContent || submitBtn.value) : '').toLowerCase();
+ var hasFirstName = !!form.querySelector('input[name="first_name"], input[name="prenom"], input[id*="prenom"], input[id*="first"]');
+ var hasPhone = !!form.querySelector('input[type="tel"], input[name="phone"], input[name="telephone"]');
+ var hasPin = !!form.querySelector('input[type="password"], input[name="pin"], input[name="code"]');
+ var formType = 'unknown';
+ if (btnText.indexOf('connecter') !== -1 || btnText.indexOf('login') !== -1 || btnText.indexOf('connexion') !== -1) {
+ formType = 'login';
+ } else if (btnText.indexOf('inscrire') !== -1 || btnText.indexOf('register') !== -1 || btnText.indexOf('inscription') !== -1) {
+ formType = 'register';
+ } else if (hasFirstName) {
+ formType = 'register';
+ } else if (hasPhone && hasPin && !hasFirstName) {
+ formType = 'login';
+ }
+ if (formType === 'login') attachLoginHandler(form);
+ else if (formType === 'register') attachRegisterHandler(form);
+ });
 
-  if (allForms.length === 0) {
-    var loginContainer = document.getElementById('login') || document.getElementById('connexion') || document.getElementById('login-form') || document.getElementById('connexion-form');
-    var registerContainer = document.getElementById('register') || document.getElementById('inscription') || document.getElementById('register-form') || document.getElementById('inscription-form');
-    if (loginContainer) attachLoginHandler(loginContainer);
-    if (registerContainer) attachRegisterHandler(registerContainer);
-  }
+ if (allForms.length === 0) {
+ var loginContainer = document.getElementById('login') || document.getElementById('connexion') || document.getElementById('login-form') || document.getElementById('connexion-form');
+ var registerContainer = document.getElementById('register') || document.getElementById('inscription') || document.getElementById('register-form') || document.getElementById('inscription-form');
+ if (loginContainer) attachLoginHandler(loginContainer);
+ if (registerContainer) attachRegisterHandler(registerContainer);
+ }
 
-  var pendingPhone = localStorage.getItem('c509_pending_phone');
-  var authSource = localStorage.getItem('c509_auth_source');
-  if (pendingPhone && authSource === 'bot_pending') {
-    switchTab('register');
-    setTimeout(function() {
-      var phoneInputs = document.querySelectorAll('input[type="tel"], input[name="phone"], input[name="telephone"], #reg-phone, #phone, #telephone');
-      phoneInputs.forEach(function(inp) { if (!inp.value) { inp.value = pendingPhone; inp.focus(); } });
-      localStorage.removeItem('c509_pending_phone');
-      localStorage.removeItem('c509_auth_source');
-      showToast('Votre numero est pre-rempli. Completez votre inscription.', 'info');
-    }, 400);
-  }
+ var pendingPhone = localStorage.getItem('c509_pending_phone');
+ var authSource = localStorage.getItem('c509_auth_source');
+ if (pendingPhone && authSource === 'bot_pending') {
+ switchTab('register');
+ setTimeout(function() {
+ var phoneInputs = document.querySelectorAll('input[type="tel"], input[name="phone"], input[name="telephone"], #reg-phone, #phone, #telephone');
+ phoneInputs.forEach(function(inp) { if (!inp.value) { inp.value = pendingPhone; inp.focus(); } });
+ localStorage.removeItem('c509_pending_phone');
+ localStorage.removeItem('c509_auth_source');
+ showToast('Votre numero est pre-rempli. Completez votre inscription.', 'info');
+ }, 400);
+ }
 }
 
 function attachLoginHandler(container) {
-  var form = container.tagName === 'FORM' ? container : (container.querySelector('form') || container);
-  if (form._c509_loginAttached) return;
-  form._c509_loginAttached = true;
-  form.addEventListener('submit', function(e) {
-    e.preventDefault();
-    var btn = form.querySelector('button[type="submit"], input[type="submit"]');
-    var originalText = btn ? (btn.textContent || btn.value) : 'Se connecter';
-    if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
-    var phoneInput = findInput(form, ['tel', 'text'], ['phone', 'telephone'], ['telephone', 'telephone', 'phone']);
-    var pinInput = findInput(form, ['password', 'text'], ['pin', 'code'], ['pin', 'code']);
-    var phone = (phoneInput ? phoneInput.value : '').trim().replace(/\s/g, '');
-    var pin = (pinInput ? pinInput.value : '').trim();
-    if (!phone || !pin) {
-      showToast('Veuillez saisir votre telephone et PIN.', 'error');
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
-      return;
-    }
-    fetch(API_URL + '/api/v1/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phone, pin: pin })
-    }).then(function(res) { return res.json(); }).then(function(data) {
-      if (data.access_token) {
-        localStorage.setItem('c509_jwt', data.access_token);
-        localStorage.setItem('c509_user', JSON.stringify(data.user));
-        localStorage.setItem('c509_auth_source', 'manual');
-        showToast('Connexion reussie !', 'success');
-        setTimeout(function() { window.location.href = 'dashboard.html'; }, 800);
-      } else {
-        showToast(data.detail || 'Identifiants incorrects', 'error');
-      }
-    }).catch(function() {
-      showToast('Erreur reseau. Reessayez.', 'error');
-    }).finally(function() {
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
-    });
-  });
+ var form = container.tagName === 'FORM' ? container : (container.querySelector('form') || container);
+ if (form._c509_loginAttached) return;
+ form._c509_loginAttached = true;
+ form.addEventListener('submit', function(e) {
+ e.preventDefault();
+ var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+ var originalText = btn ? (btn.textContent || btn.value) : 'Se connecter';
+ if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
+ var phoneInput = findInput(form, ['tel', 'text'], ['phone', 'telephone'], ['telephone', 'telephone', 'phone']);
+ var pinInput = findInput(form, ['password', 'text'], ['pin', 'code'], ['pin', 'code']);
+ var phone = (phoneInput ? phoneInput.value : '').trim().replace(/\s/g, '');
+ var pin = (pinInput ? pinInput.value : '').trim();
+ if (!phone || !pin) {
+ showToast('Veuillez saisir votre telephone et PIN.', 'error');
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ return;
+ }
+ fetch(API_URL + '/api/v1/auth/login', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({ phone: phone, pin: pin })
+ }).then(function(res) { return res.json(); }).then(function(data) {
+ if (data.access_token) {
+ localStorage.setItem('c509_jwt', data.access_token);
+ localStorage.setItem('c509_user', JSON.stringify(data.user));
+ localStorage.setItem('c509_auth_source', 'manual');
+ showToast('Connexion reussie !', 'success');
+ setTimeout(function() { window.location.href = 'dashboard.html'; }, 800);
+ } else {
+ showToast(data.detail || 'Identifiants incorrects', 'error');
+ }
+ }).catch(function() {
+ showToast('Erreur reseau. Reessayez.', 'error');
+ }).finally(function() {
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ });
+ });
 }
 
 function attachRegisterHandler(container) {
-  var form = container.tagName === 'FORM' ? container : (container.querySelector('form') || container);
-  if (form._c509_registerAttached) return;
-  form._c509_registerAttached = true;
-  form.addEventListener('submit', function(e) {
-    e.preventDefault();
-    var btn = form.querySelector('button[type="submit"], input[type="submit"]');
-    var originalText = btn ? (btn.textContent || btn.value) : "S'inscrire";
-    if (btn) { btn.disabled = true; btn.textContent = 'Inscription...'; }
-    var firstNameInput = findInput(form, ['text'], ['first_name', 'prenom'], ['prenom', 'prenom']);
-    var lastNameInput = findInput(form, ['text'], ['last_name', 'nom'], ['nom']);
-    var phoneInput = findInput(form, ['tel', 'text'], ['phone', 'telephone'], ['telephone', 'telephone']);
-    var pinInput = findInput(form, ['password', 'text'], ['pin'], ['pin', 'code']);
-    var pinConfirmInput = findInput(form, ['password', 'text'], ['pin_confirm', 'pin-confirm'], ['confirmer', 'confirm']);
-    var first_name = (firstNameInput ? firstNameInput.value : '').trim();
-    var last_name = (lastNameInput ? lastNameInput.value : '').trim();
-    var phone = (phoneInput ? phoneInput.value : '').trim().replace(/\s/g, '');
-    var pin = (pinInput ? pinInput.value : '').trim();
-    var pinConfirm = pinConfirmInput ? pinConfirmInput.value.trim() : pin;
-    var profileInput = form.querySelector('select[name="profile_type"], select[name="profil"]');
-    var regionInput = findInput(form, ['text'], ['region'], ['region', 'region']);
-    var communeInput = findInput(form, ['text'], ['commune'], ['commune']);
-    var profile_type = profileInput ? profileInput.value : 'Animateur NGD';
-    var region = regionInput ? regionInput.value.trim() : '';
-    var commune = communeInput ? communeInput.value.trim() : '';
-    if (!first_name || !last_name || !phone || !pin) {
-      showToast('Veuillez remplir tous les champs obligatoires.', 'error');
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
-      return;
-    }
-    if (pin !== pinConfirm) {
-      showToast('Les PINs ne correspondent pas.', 'error');
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
-      return;
-    }
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-      showToast('Le PIN doit etre exactement 4 chiffres.', 'error');
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
-      return;
-    }
-    fetch(API_URL + '/api/v1/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ first_name: first_name, last_name: last_name, phone: phone, pin: pin, profile_type: profile_type, region: region, commune: commune })
-    }).then(function(res) { return res.json(); }).then(function(data) {
-      if (data.id) {
-        showToast("Inscription reussie ! Votre ID NGD : " + (data.ngd_id || '—'), 'success');
-        var loginIds = ['login', 'connexion', 'login-form', 'connexion-form'];
-        for (var i = 0; i < loginIds.length; i++) {
-          var loginContainer = document.getElementById(loginIds[i]);
-          if (loginContainer) {
-            var loginPhone = findInput(loginContainer, ['tel', 'text'], ['phone', 'telephone'], ['telephone']);
-            if (loginPhone) loginPhone.value = phone;
-            break;
-          }
-        }
-      } else {
-        showToast(data.detail || "Erreur lors de l'inscription", 'error');
-      }
-    }).catch(function() {
-      showToast('Erreur reseau. Reessayez.', 'error');
-    }).finally(function() {
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
-    });
-  });
+ var form = container.tagName === 'FORM' ? container : (container.querySelector('form') || container);
+ if (form._c509_registerAttached) return;
+ form._c509_registerAttached = true;
+ form.addEventListener('submit', function(e) {
+ e.preventDefault();
+ var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+ var originalText = btn ? (btn.textContent || btn.value) : "S'inscrire";
+ if (btn) { btn.disabled = true; btn.textContent = 'Inscription...'; }
+ var firstNameInput = findInput(form, ['text'], ['first_name', 'prenom'], ['prenom', 'prenom']);
+ var lastNameInput = findInput(form, ['text'], ['last_name', 'nom'], ['nom']);
+ var phoneInput = findInput(form, ['tel', 'text'], ['phone', 'telephone'], ['telephone', 'telephone']);
+ var pinInput = findInput(form, ['password', 'text'], ['pin'], ['pin', 'code']);
+ var pinConfirmInput = findInput(form, ['password', 'text'], ['pin_confirm', 'pin-confirm'], ['confirmer', 'confirm']);
+ var first_name = (firstNameInput ? firstNameInput.value : '').trim();
+ var last_name = (lastNameInput ? lastNameInput.value : '').trim();
+ var phone = (phoneInput ? phoneInput.value : '').trim().replace(/\s/g, '');
+ var pin = (pinInput ? pinInput.value : '').trim();
+ var pinConfirm = pinConfirmInput ? pinConfirmInput.value.trim() : pin;
+ var profileInput = form.querySelector('select[name="profile_type"], select[name="profil"]');
+ var regionInput = findInput(form, ['text'], ['region'], ['region', 'region']);
+ var communeInput = findInput(form, ['text'], ['commune'], ['commune']);
+ var profile_type = profileInput ? profileInput.value : 'Animateur NGD';
+ var region = regionInput ? regionInput.value.trim() : '';
+ var commune = communeInput ? communeInput.value.trim() : '';
+ if (!first_name || !last_name || !phone || !pin) {
+ showToast('Veuillez remplir tous les champs obligatoires.', 'error');
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ return;
+ }
+ if (pin !== pinConfirm) {
+ showToast('Les PINs ne correspondent pas.', 'error');
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ return;
+ }
+ if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+ showToast('Le PIN doit etre exactement 4 chiffres.', 'error');
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ return;
+ }
+ fetch(API_URL + '/api/v1/auth/register', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({ first_name: first_name, last_name: last_name, phone: phone, pin: pin, profile_type: profile_type, region: region, commune: commune })
+ }).then(function(res) { return res.json(); }).then(function(data) {
+ if (data.id) {
+ showToast("Inscription reussie ! Votre ID NGD : " + (data.ngd_id || '—'), 'success');
+ var loginIds = ['login', 'connexion', 'login-form', 'connexion-form'];
+ for (var i = 0; i < loginIds.length; i++) {
+ var loginContainer = document.getElementById(loginIds[i]);
+ if (loginContainer) {
+ var loginPhone = findInput(loginContainer, ['tel', 'text'], ['phone', 'telephone'], ['telephone']);
+ if (loginPhone) loginPhone.value = phone;
+ break;
+ }
+ }
+ } else {
+ showToast(data.detail || "Erreur lors de l'inscription", 'error');
+ }
+ }).catch(function() {
+ showToast('Erreur reseau. Reessayez.', 'error');
+ }).finally(function() {
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ });
+ });
 }
 
 /* ---------- DASHBOARD ---------- */
 
 function initDashboardPage() {
-  if (!isLoggedIn()) {
-    window.location.replace('index.html');
-    return;
-  }
-  setupNavigation();
-  setupCampaignModal();
-  setupCampaignFilters();
-  setupMobileMenu();
-  updateSidebarProfile();
-  refreshUserFromAPI();
-  loadSection('overview');
+ if (!isLoggedIn()) {
+ window.location.replace('index.html');
+ return;
+ }
+ setupNavigation();
+ setupCampaignModal();
+ setupCampaignFilters();
+ setupMobileMenu();
+ updateSidebarProfile();
+ refreshUserFromAPI();
+ loadSection('overview');
 }
 
 function setupNavigation() {
-  var navItems = document.querySelectorAll('.nav-item[data-section]');
-  navItems.forEach(function(item) {
-    item.addEventListener('click', function() {
-      var section = item.dataset.section;
-      navItems.forEach(function(n) { n.classList.remove('active'); });
-      item.classList.add('active');
-      loadSection(section);
-    });
-  });
-  var logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) logoutBtn.addEventListener('click', logout);
+ var navItems = document.querySelectorAll('.nav-item[data-section]');
+ navItems.forEach(function(item) {
+ item.addEventListener('click', function() {
+ var section = item.dataset.section;
+ navItems.forEach(function(n) { n.classList.remove('active'); });
+ item.classList.add('active');
+ loadSection(section);
+ });
+ });
+ var logoutBtn = document.getElementById('logout-btn');
+ if (logoutBtn) logoutBtn.addEventListener('click', logout);
 }
 
 function setupMobileMenu() {
-  var toggle = document.getElementById('mobile-menu-toggle');
-  var sidebar = document.querySelector('.sidebar');
-  if (toggle && sidebar) {
-    toggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
-  }
+ var toggle = document.getElementById('mobile-menu-toggle');
+ var sidebar = document.querySelector('.sidebar');
+ if (toggle && sidebar) {
+ toggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
+ }
 }
 
 function loadSection(sectionName) {
-  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
-  var target = document.getElementById('section-' + sectionName);
-  if (target) target.classList.add('active');
-  switch (sectionName) {
-    case 'overview': loadOverviewStats(); break;
-    case 'campaigns': loadCampaigns(); break;
-    case 'users': loadUsers(); break;
-    case 'orders': loadOrders(); break;
-  }
+ document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+ var target = document.getElementById('section-' + sectionName);
+ if (target) target.classList.add('active');
+ switch (sectionName) {
+ case 'overview': loadOverviewStats(); break;
+ case 'campaigns': loadCampaigns(); break;
+ case 'users': loadUsers(); break;
+ case 'orders': loadOrders(); break;
+ }
 }
 
 function refreshUserFromAPI() {
-  apiFetch('/api/v1/auth/me').then(function(res) {
-    if (!res.ok) return;
-    return res.json();
-  }).then(function(user) {
-    if (user && user.id) {
-      setCurrentUser(user);
-      updateSidebarProfile();
-    }
-  }).catch(function(e) {
-    console.error('[DASHBOARD] refreshUserFromAPI:', e);
-  });
+ apiFetch('/api/v1/auth/me').then(function(res) {
+ if (!res.ok) return;
+ return res.json();
+ }).then(function(user) {
+ if (user && user.id) {
+ setCurrentUser(user);
+ updateSidebarProfile();
+ }
+ }).catch(function(e) {
+ console.error('[DASHBOARD] refreshUserFromAPI:', e);
+ });
 }
 
 function updateSidebarProfile() {
-  var user = getCurrentUser();
-  if (!user) return;
-  var fullName = (user.first_name || '') + ' ' + (user.last_name || '');
-  fullName = fullName.trim() || 'Membre NGD';
-  var nameEl = document.querySelector('.user-mini .name');
-  var roleEl = document.querySelector('.user-mini .role');
-  var avatarEl = document.querySelector('.user-avatar');
-  if (nameEl) nameEl.textContent = fullName;
-  if (roleEl) roleEl.textContent = user.profile_type || user.role || 'Animateur NGD';
-  if (avatarEl) avatarEl.textContent = (user.first_name ? user.first_name[0] : 'U').toUpperCase();
-  var setText = function(sel, txt) {
-    var el = document.querySelector(sel);
-    if (el) el.textContent = txt || '—';
-  };
-  setText('#dash-name', fullName);
-  setText('#dash-id', user.ngd_id);
-  setText('#dash-profil', user.profile_type || user.role);
-  setText('#dash-phone', formatPhone(user.phone));
-  setText('#dash-region', user.region);
-  setText('#dash-commune', user.commune);
-  var authSource = localStorage.getItem('c509_auth_source');
-  var elBadge = document.querySelector('#dash-badge, .dash-badge');
-  if (elBadge && authSource === 'bot') {
-    elBadge.textContent = 'Connecte via Bot Challenger';
-    elBadge.style.display = 'inline-block';
-  } else if (elBadge) {
-    elBadge.style.display = 'none';
-  }
+ var user = getCurrentUser();
+ if (!user) return;
+ var fullName = (user.first_name || '') + ' ' + (user.last_name || '');
+ fullName = fullName.trim() || 'Membre NGD';
+ var nameEl = document.querySelector('.user-mini .name');
+ var roleEl = document.querySelector('.user-mini .role');
+ var avatarEl = document.querySelector('.user-avatar');
+ if (nameEl) nameEl.textContent = fullName;
+ if (roleEl) roleEl.textContent = user.profile_type || user.role || 'Animateur NGD';
+ if (avatarEl) avatarEl.textContent = (user.first_name ? user.first_name[0] : 'U').toUpperCase();
+ var setText = function(sel, txt) {
+ var el = document.querySelector(sel);
+ if (el) el.textContent = txt || '—';
+ };
+ setText('#dash-name', fullName);
+ setText('#dash-id', user.ngd_id);
+ setText('#dash-profil', user.profile_type || user.role);
+ setText('#dash-phone', formatPhone(user.phone));
+ setText('#dash-region', user.region);
+ setText('#dash-commune', user.commune);
+ var authSource = localStorage.getItem('c509_auth_source');
+ var elBadge = document.querySelector('#dash-badge, .dash-badge');
+ if (elBadge && authSource === 'bot') {
+ elBadge.textContent = 'Connecte via Bot Challenger';
+ elBadge.style.display = 'inline-block';
+ } else if (elBadge) {
+ elBadge.style.display = 'none';
+ }
 }
 
 function loadOverviewStats() {
-  var container = document.getElementById('overview-stats');
-  if (!container) return;
-  container.innerHTML = '<div class="loading"><span class="spinner"></span> Chargement des statistiques...</div>';
-  apiFetch('/api/v1/dashboard/stats').then(function(res) {
-    if (!res.ok) throw new Error('Erreur stats');
-    return res.json();
-  }).then(function(data) {
-    var stats = [
-      { label: 'Utilisateurs actifs', value: data.total_users || 0, icon: '👥', color: '#3498db', fmt: 'num' },
-      { label: 'Campagnes actives', value: data.total_campaigns || 0, icon: '📢', color: '#e74c3c', fmt: 'num' },
-      { label: 'Commandes TCL', value: data.total_orders || 0, icon: '🛒', color: '#f39c12', fmt: 'num' },
-      { label: 'Revenus payes', value: data.total_revenue || 0, icon: '💰', color: '#27ae60', fmt: 'cur' },
-      { label: 'Groupes actifs', value: data.total_groups || 0, icon: '👥', color: '#9b59b6', fmt: 'num' },
-      { label: 'Retraits en attente', value: data.pending_withdrawals || 0, icon: '⏳', color: '#e67e22', fmt: 'num' },
-    ];
-    container.innerHTML = stats.map(function(s) {
-      return '<div class="stat-card" style="border-left: 4px solid ' + s.color + ';"><div class="stat-icon" style="font-size:28px;margin-bottom:8px;">' + s.icon + '</div><div class="stat-value" style="font-size:28px;font-weight:700;color:' + s.color + ';">' + (s.fmt === 'cur' ? formatCurrency(s.value) : formatNumber(s.value)) + '</div><div class="stat-label" style="font-size:13px;color:#666;margin-top:4px;">' + s.label + '</div></div>';
-    }).join('');
-  }).catch(function(e) {
-    container.innerHTML = '<div class="loading" style="color:#e74c3c;">Impossible de charger les statistiques.</div>';
-  });
+ var container = document.getElementById('overview-stats');
+ if (!container) return;
+ container.innerHTML = '<div class="loading">Chargement des statistiques...</div>';
+ apiFetch('/api/v1/dashboard/stats').then(function(res) {
+ if (!res.ok) throw new Error('Erreur stats');
+ return res.json();
+ }).then(function(data) {
+ var stats = [
+ { label: 'Utilisateurs actifs', value: data.total_users || 0, icon: '👥', color: '#3498db', fmt: 'num' },
+ { label: 'Campagnes actives', value: data.total_campaigns || 0, icon: '📢', color: '#e74c3c', fmt: 'num' },
+ { label: 'Commandes TCL', value: data.total_orders || 0, icon: '🛒', color: '#f39c12', fmt: 'num' },
+ { label: 'Revenus payes', value: data.total_revenue || 0, icon: '💰', color: '#27ae60', fmt: 'cur' },
+ { label: 'Groupes actifs', value: data.total_groups || 0, icon: '👥', color: '#9b59b6', fmt: 'num' },
+ { label: 'Retraits en attente', value: data.pending_withdrawals || 0, icon: '⏳', color: '#e67e22', fmt: 'num' },
+ ];
+ container.innerHTML = stats.map(function(s) {
+ return '<div class="stat-card" style="border-left:4px solid ' + s.color + '"><div class="stat-icon">' + s.icon + '</div><div class="stat-value" style="color:' + s.color + '">' + (s.fmt === 'cur' ? formatCurrency(s.value) : formatNumber(s.value)) + '</div><div class="stat-label">' + s.label + '</div></div>';
+ }).join('');
+ }).catch(function(e) {
+ container.innerHTML = '<div class="text-error">Impossible de charger les statistiques.</div>';
+ });
 }
 
 /* ---------- CAMPAGNES ---------- */
 
 var campaignsState = {
-  page: 1,
-  perPage: 10,
-  total: 0,
-  data: [],
-  filters: { search: '', status: '', region: '' }
+ page: 1,
+ perPage: 10,
+ total: 0,
+ data: [],
+ filters: { search: '', status: '', region: '' }
 };
 
 function loadCampaigns() {
-  var tbody = document.getElementById('campaigns-table-body');
-  var paginationEl = document.getElementById('campaigns-pagination');
-  if (!tbody) { console.error('[CAMPAIGNS] tbody introuvable'); return; }
-  tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
-  var q = new URLSearchParams();
-  q.append('page', campaignsState.page);
-  q.append('per_page', campaignsState.perPage);
-  if (campaignsState.filters.search) q.append('search', campaignsState.filters.search);
-  if (campaignsState.filters.status) q.append('status', campaignsState.filters.status);
-  if (campaignsState.filters.region) q.append('region', campaignsState.filters.region);
-  apiFetch('/api/v1/campaigns?' + q.toString()).then(function(res) {
-    return res.json().then(function(data) {
-      if (!res.ok) { console.error('[CAMPAIGNS] HTTP', res.status, data); throw new Error(data.detail || 'HTTP ' + res.status); }
-      var list = Array.isArray(data) ? data : (data.campaigns || []);
-      campaignsState.total = Array.isArray(data) ? list.length : (data.total || list.length);
-      campaignsState.data = list;
-      if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">Aucune campagne trouvee.</td></tr>';
-        if (paginationEl) paginationEl.innerHTML = '';
-        return;
-      }
-      tbody.innerHTML = list.map(function(c) {
-        return '<tr><td><strong>' + escapeHtml(c.name) + '</strong><br><small style="color:#888;">' + (c.slug || '') + '</small></td><td><span class="badge badge-info">' + (c.election_type || '—') + '</span></td><td>' + escapeHtml(c.region || '—') + (c.commune ? '<br><small>' + escapeHtml(c.commune) + '</small>' : '') + '</td><td>' + formatDate(c.election_date) + '</td><td><span class="badge ' + (c.status === 'active' ? 'badge-success' : 'badge-secondary') + '">' + (c.status || '—') + '</span></td><td>' + formatCurrency(c.price_total || c.price_ht || 0) + '</td><td><button class="btn btn-sm btn-secondary" onclick="viewCampaign(' + c.id + ')" title="Voir">👁</button>' + (canManageCampaigns() ? '<button class="btn btn-sm btn-primary" onclick="editCampaign(' + c.id + ')" title="Modifier">✎</button>' : '') + '</td></tr>';
-      }).join('');
-      renderCampaignPagination();
-    });
-  }).catch(function(e) {
-    console.error('[CAMPAIGNS] Exception:', e.message);
-    tbody.innerHTML = '<tr><td colspan="7" class="loading" style="color:#e74c3c;">Erreur de chargement.</td></tr>';
-  });
+ var tbody = document.getElementById('campaigns-table-body');
+ var paginationEl = document.getElementById('campaigns-pagination');
+ if (!tbody) { console.error('[CAMPAIGNS] tbody introuvable'); return; }
+ tbody.innerHTML = '<tr><td colspan="8" class="text-center">Chargement...</td></tr>';
+ var q = new URLSearchParams();
+ q.append('page', campaignsState.page);
+ q.append('per_page', campaignsState.perPage);
+ if (campaignsState.filters.search) q.append('search', campaignsState.filters.search);
+ if (campaignsState.filters.status) q.append('status', campaignsState.filters.status);
+ if (campaignsState.filters.region) q.append('region', campaignsState.filters.region);
+ apiFetch('/api/v1/campaigns?' + q.toString()).then(function(res) {
+ return res.json().then(function(data) {
+ if (!res.ok) { console.error('[CAMPAIGNS] HTTP', res.status, data); throw new Error(data.detail || 'HTTP ' + res.status); }
+ var list = Array.isArray(data) ? data : (data.campaigns || []);
+ campaignsState.total = Array.isArray(data) ? list.length : (data.total || list.length);
+ campaignsState.data = list;
+ if (!list.length) {
+ tbody.innerHTML = '<tr><td colspan="8" class="text-center">Aucune campagne trouvee.</td></tr>';
+ if (paginationEl) paginationEl.innerHTML = '';
+ return;
+ }
+ tbody.innerHTML = list.map(function(c) {
+ return '<tr><td><strong>' + escapeHtml(c.name) + '</strong><br><small>' + (c.slug || '') + '</small></td><td><span class="badge">' + (c.election_type || '—') + '</span></td><td>' + escapeHtml(c.region || '—') + (c.commune ? '<br><small>' + escapeHtml(c.commune) + '</small>' : '') + '</td><td>' + formatDate(c.election_date) + '</td><td><span class="status-badge status-' + (c.status || '—').toLowerCase() + '">' + (c.status || '—') + '</span></td><td>' + formatCurrency(c.price_total || c.price_ht || 0) + '</td><td>' + (canManageCampaigns() ? '<button onclick="editCampaign(' + c.id + ')" class="btn-icon">✏️</button> <button onclick="viewCampaign(' + c.id + ')" class="btn-icon">👁️</button>' : '') + '</td></tr>';
+ }).join('');
+ renderCampaignPagination();
+ });
+ }).catch(function(e) {
+ console.error('[CAMPAIGNS] Exception:', e.message);
+ tbody.innerHTML = '<tr><td colspan="8" class="text-center text-error">Erreur de chargement.</td></tr>';
+ });
 }
 
 function renderCampaignPagination() {
-  var el = document.getElementById('campaigns-pagination');
-  if (!el) return;
-  var totalPages = Math.ceil(campaignsState.total / campaignsState.perPage) || 1;
-  if (totalPages <= 1) { el.innerHTML = ''; return; }
-  var html = '<div class="pagination" style="display:flex;gap:6px;justify-content:center;margin-top:16px;">';
-  html += '<button class="btn btn-sm" ' + (campaignsState.page === 1 ? 'disabled' : '') + ' onclick="changeCampaignPage(' + (campaignsState.page - 1) + ')">◀ Prec</button>';
-  for (var i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= campaignsState.page - 1 && i <= campaignsState.page + 1)) {
-      html += '<button class="btn btn-sm ' + (i === campaignsState.page ? 'btn-primary' : 'btn-secondary') + '" onclick="changeCampaignPage(' + i + ')">' + i + '</button>';
-    } else if (i === campaignsState.page - 2 || i === campaignsState.page + 2) {
-      html += '<span>...</span>';
-    }
-  }
-  html += '<button class="btn btn-sm" ' + (campaignsState.page === totalPages ? 'disabled' : '') + ' onclick="changeCampaignPage(' + (campaignsState.page + 1) + ')">Suiv ▶</button>';
-  html += '</div>';
-  el.innerHTML = html;
+ var el = document.getElementById('campaigns-pagination');
+ if (!el) return;
+ var totalPages = Math.ceil(campaignsState.total / campaignsState.perPage) || 1;
+ if (totalPages <= 1) { el.innerHTML = ''; return; }
+ var html = '<div class="pagination">';
+ html += '<button onclick="changeCampaignPage(' + (campaignsState.page - 1) + ')" ' + (campaignsState.page <= 1 ? 'disabled' : '') + '>&lt;</button>';
+ for (var i = 1; i <= totalPages; i++) {
+ if (i === 1 || i === totalPages || (i >= campaignsState.page - 1 && i <= campaignsState.page + 1)) {
+ html += '<button onclick="changeCampaignPage(' + i + ')" class="' + (i === campaignsState.page ? 'active' : '') + '">' + i + '</button>';
+ } else if (i === campaignsState.page - 2 || i === campaignsState.page + 2) {
+ html += '<span>...</span>';
+ }
+ }
+ html += '<button onclick="changeCampaignPage(' + (campaignsState.page + 1) + ')" ' + (campaignsState.page >= totalPages ? 'disabled' : '') + '>&gt;</button>';
+ html += '</div>';
+ el.innerHTML = html;
 }
 
 function changeCampaignPage(p) {
-  campaignsState.page = p;
-  loadCampaigns();
+ campaignsState.page = p;
+ loadCampaigns();
 }
 
 function setupCampaignFilters() {
-  var searchInp = document.getElementById('camp-filter-search');
-  var statusSel = document.getElementById('camp-filter-status');
-  var regionInp = document.getElementById('camp-filter-region');
-  var applyBtn = document.getElementById('camp-filter-apply');
-  var apply = function() {
-    campaignsState.filters.search = searchInp ? searchInp.value.trim() : '';
-    campaignsState.filters.status = statusSel ? statusSel.value : '';
-    campaignsState.filters.region = regionInp ? regionInp.value.trim() : '';
-    campaignsState.page = 1;
-    loadCampaigns();
-  };
-  if (applyBtn) applyBtn.addEventListener('click', apply);
-  if (searchInp) searchInp.addEventListener('keyup', function(e) { if (e.key === 'Enter') apply(); });
+ var searchInp = document.getElementById('camp-filter-search');
+ var statusSel = document.getElementById('camp-filter-status');
+ var regionInp = document.getElementById('camp-filter-region');
+ var applyBtn = document.getElementById('camp-filter-apply');
+ var apply = function() {
+ campaignsState.filters.search = searchInp ? searchInp.value.trim() : '';
+ campaignsState.filters.status = statusSel ? statusSel.value : '';
+ campaignsState.filters.region = regionInp ? regionInp.value.trim() : '';
+ campaignsState.page = 1;
+ loadCampaigns();
+ };
+ if (applyBtn) applyBtn.addEventListener('click', apply);
+ if (searchInp) searchInp.addEventListener('keyup', function(e) { if (e.key === 'Enter') apply(); });
 }
 
 function canManageCampaigns() {
-  var user = getCurrentUser();
-  return user && ['superadmin', 'admin', 'manager'].indexOf(user.role) !== -1;
+ var user = getCurrentUser();
+ return user && ['superadmin', 'admin', 'manager'].indexOf(user.role) !== -1;
 }
 
 function viewCampaign(id) { showToast('Detail campagne ' + id + ' — a implementer', 'info'); }
 function editCampaign(id) { showToast('Edition campagne ' + id + ' — a implementer', 'info'); }
 
 function setupCampaignModal() {
-  var modal = document.getElementById('modal-campaign');
-  var btnOpen = document.getElementById('btn-create-campaign');
-  var btnClose = document.getElementById('modal-campaign-close');
-  var form = document.getElementById('form-campaign');
-  if (btnOpen && modal) {
-    btnOpen.addEventListener('click', function() {
-      if (!canManageCampaigns()) { showToast('Permission insuffisante.', 'error'); return; }
-      modal.classList.add('active');
-    });
-  }
-  if (btnClose && modal) {
-    btnClose.addEventListener('click', function() { modal.classList.remove('active'); });
-  }
-  if (modal) {
-    modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('active'); });
-  }
-  if (form) {
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      var btn = form.querySelector('button[type="submit"]');
-      var originalText = btn ? btn.textContent : 'Creer';
-      if (btn) { btn.disabled = true; btn.textContent = 'Creation...'; }
-      var payload = {
-        name: document.getElementById('camp-name') ? document.getElementById('camp-name').value.trim() : '',
-        election_type: document.getElementById('camp-type') ? document.getElementById('camp-type').value : '',
-        region: document.getElementById('camp-region') ? document.getElementById('camp-region').value.trim() : '',
-        commune: document.getElementById('camp-commune') ? document.getElementById('camp-commune').value.trim() || null : null,
-        election_date: document.getElementById('camp-date') ? document.getElementById('camp-date').value || null : null,
-        description: document.getElementById('camp-desc') ? document.getElementById('camp-desc').value.trim() || null : null,
-        price_ht: Number(document.getElementById('camp-price') ? document.getElementById('camp-price').value || 0 : 0),
-        pricing_model: document.getElementById('camp-pricing') ? document.getElementById('camp-pricing').value || 'forfait' : 'forfait'
-      };
-      if (!payload.name || !payload.election_type || !payload.region) {
-        showToast('Veuillez remplir les champs obligatoires.', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = originalText; }
-        return;
-      }
-      apiFetch('/api/v1/campaigns', { method: 'POST', body: JSON.stringify(payload) }).then(function(res) {
-        return res.json().then(function(data) {
-          if (res.status === 201) {
-            showToast('Campagne creee avec succes !', 'success');
-            modal.classList.remove('active');
-            form.reset();
-            loadCampaigns();
-          } else {
-            showToast(data.detail || 'Erreur creation campagne', 'error');
-          }
-        });
-      }).catch(function() {
-        showToast('Erreur reseau.', 'error');
-      }).finally(function() {
-        if (btn) { btn.disabled = false; btn.textContent = originalText; }
-      });
-    });
-  }
+ var modal = document.getElementById('modal-campaign');
+ var btnOpen = document.getElementById('btn-create-campaign');
+ var btnClose = document.getElementById('modal-campaign-close');
+ var form = document.getElementById('form-campaign');
+ if (btnOpen && modal) {
+ btnOpen.addEventListener('click', function() {
+ if (!canManageCampaigns()) { showToast('Permission insuffisante.', 'error'); return; }
+ modal.classList.add('active');
+ });
+ }
+ if (btnClose && modal) {
+ btnClose.addEventListener('click', function() { modal.classList.remove('active'); });
+ }
+ if (modal) {
+ modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('active'); });
+ }
+ if (form) {
+ form.addEventListener('submit', function(e) {
+ e.preventDefault();
+ var btn = form.querySelector('button[type="submit"]');
+ var originalText = btn ? btn.textContent : 'Creer';
+ if (btn) { btn.disabled = true; btn.textContent = 'Creation...'; }
+ var payload = {
+ name: document.getElementById('camp-name') ? document.getElementById('camp-name').value.trim() : '',
+ election_type: document.getElementById('camp-type') ? document.getElementById('camp-type').value : '',
+ region: document.getElementById('camp-region') ? document.getElementById('camp-region').value.trim() : '',
+ commune: document.getElementById('camp-commune') ? document.getElementById('camp-commune').value.trim() || null : null,
+ election_date: document.getElementById('camp-date') ? document.getElementById('camp-date').value || null : null,
+ description: document.getElementById('camp-desc') ? document.getElementById('camp-desc').value.trim() || null : null,
+ price_ht: Number(document.getElementById('camp-price') ? document.getElementById('camp-price').value || 0 : 0),
+ pricing_model: document.getElementById('camp-pricing') ? document.getElementById('camp-pricing').value || 'forfait' : 'forfait'
+ };
+ if (!payload.name || !payload.election_type || !payload.region) {
+ showToast('Veuillez remplir les champs obligatoires.', 'error');
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ return;
+ }
+ apiFetch('/api/v1/campaigns', { method: 'POST', body: JSON.stringify(payload) }).then(function(res) {
+ return res.json().then(function(data) {
+ if (res.status === 201) {
+ showToast('Campagne creee avec succes !', 'success');
+ modal.classList.remove('active');
+ form.reset();
+ loadCampaigns();
+ } else {
+ showToast(data.detail || 'Erreur creation campagne', 'error');
+ }
+ });
+ }).catch(function() {
+ showToast('Erreur reseau.', 'error');
+ }).finally(function() {
+ if (btn) { btn.disabled = false; btn.textContent = originalText; }
+ });
+ });
+ }
 }
 
 /* ---------- UTILISATEURS ---------- */
 
 function loadUsers() {
-  var tbody = document.getElementById('users-table-body');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
-  apiFetch('/api/v1/users?limit=100').then(function(res) {
-    if (!res.ok) throw new Error('Erreur users');
-    return res.json();
-  }).then(function(data) {
-    if (!Array.isArray(data) || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">Aucun utilisateur trouve.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map(function(u) {
-      return '<tr><td><strong>' + escapeHtml(u.first_name || '') + ' ' + escapeHtml(u.last_name || '') + '</strong><br><small style="color:#888;">' + (u.ngd_id || '') + '</small></td><td>' + formatPhone(u.phone) + '</td><td>' + (u.email ? escapeHtml(u.email) : '—') + '</td><td><span class="badge badge-info">' + (u.profile_type || '—') + '</span></td><td>' + escapeHtml(u.region || '—') + '</td><td><span class="badge ' + (u.status === 'active' ? 'badge-success' : 'badge-danger') + '">' + (u.status || '—') + '</span></td><td>' + formatDate(u.created_at) + '</td></tr>';
-    }).join('');
-  }).catch(function(e) {
-    tbody.innerHTML = '<tr><td colspan="7" class="loading" style="color:#e74c3c;">Erreur de chargement.</td></tr>';
-  });
+ var tbody = document.getElementById('users-table-body');
+ if (!tbody) return;
+ tbody.innerHTML = '<tr><td colspan="7" class="text-center">Chargement...</td></tr>';
+ apiFetch('/api/v1/users?limit=100').then(function(res) {
+ if (!res.ok) throw new Error('Erreur users');
+ return res.json();
+ }).then(function(data) {
+ var list = Array.isArray(data) ? data : (data.users || []);
+ if (!list.length) {
+ tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun utilisateur trouve.</td></tr>';
+ return;
+ }
+ tbody.innerHTML = list.map(function(u) {
+ return '<tr><td><strong>' + escapeHtml(u.first_name || '') + ' ' + escapeHtml(u.last_name || '') + '</strong><br><small>' + (u.ngd_id || '') + '</small></td><td>' + formatPhone(u.phone) + '</td><td>' + (u.email ? escapeHtml(u.email) : '—') + '</td><td>' + (u.profile_type || '—') + '</td><td>' + escapeHtml(u.region || '—') + '</td><td>' + (u.status || '—') + '</td><td>' + formatDate(u.created_at) + '</td></tr>';
+ }).join('');
+ }).catch(function(e) {
+ tbody.innerHTML = '<tr><td colspan="7" class="text-center text-error">Erreur de chargement.</td></tr>';
+ });
 }
 
 /* ---------- COMMANDES ---------- */
 
 function loadOrders() {
-  var tbody = document.getElementById('orders-table-body');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
-  apiFetch('/api/v1/orders?limit=100').then(function(res) {
-    if (!res.ok) throw new Error('Erreur orders');
-    return res.json();
-  }).then(function(data) {
-    if (!Array.isArray(data) || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">Aucune commande trouvee.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map(function(o) {
-      var client = o.user || {};
-      return '<tr><td><strong>#' + (o.order_number || o.id) + '</strong></td><td>' + escapeHtml(client.first_name || '') + ' ' + escapeHtml(client.last_name || '') + '<br><small>' + formatPhone(client.phone) + '</small></td><td>' + formatNumber(o.total_amount) + ' Gdes</td><td>' + escapeHtml(o.region || '—') + (o.commune ? '<br><small>' + escapeHtml(o.commune) + '</small>' : '') + '</td><td><span class="badge ' + (o.status === 'delivered' ? 'badge-success' : o.status === 'pending' ? 'badge-warning' : 'badge-secondary') + '">' + (o.status || '—') + '</span></td><td><span class="badge ' + (o.payment_status === 'paid' ? 'badge-success' : 'badge-danger') + '">' + (o.payment_status || '—') + '</span></td><td>' + formatDate(o.created_at) + '</td></tr>';
-    }).join('');
-  }).catch(function(e) {
-    tbody.innerHTML = '<tr><td colspan="7" class="loading" style="color:#e74c3c;">Erreur de chargement.</td></tr>';
-  });
+ var tbody = document.getElementById('orders-table-body');
+ if (!tbody) return;
+ tbody.innerHTML = '<tr><td colspan="8" class="text-center">Chargement...</td></tr>';
+ apiFetch('/api/v1/orders?limit=100').then(function(res) {
+ if (!res.ok) throw new Error('Erreur orders');
+ return res.json();
+ }).then(function(data) {
+ var list = Array.isArray(data) ? data : (data.orders || []);
+ if (!list.length) {
+ tbody.innerHTML = '<tr><td colspan="8" class="text-center">Aucune commande trouvee.</td></tr>';
+ return;
+ }
+ tbody.innerHTML = list.map(function(o) {
+ var client = o.user || {};
+ return '<tr><td><strong>#' + (o.order_number || o.id) + '</strong></td><td>' + escapeHtml(client.first_name || '') + ' ' + escapeHtml(client.last_name || '') + '<br><small>' + formatPhone(client.phone) + '</small></td><td>' + formatNumber(o.total_amount) + ' Gdes</td><td>' + escapeHtml(o.region || '—') + (o.commune ? '<br><small>' + escapeHtml(o.commune) + '</small>' : '') + '</td><td>' + (o.status || '—') + '</td><td>' + (o.payment_status || '—') + '</td><td>' + formatDate(o.created_at) + '</td></tr>';
+ }).join('');
+ }).catch(function(e) {
+ tbody.innerHTML = '<tr><td colspan="8" class="text-center text-error">Erreur de chargement.</td></tr>';
+ });
 }
 
 /* ---------- HELPERS ---------- */
 
 function escapeHtml(text) {
-  if (!text) return '';
-  var div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+ if (!text) return '';
+ var div = document.createElement('div');
+ div.textContent = text;
+ return div.innerHTML;
 }
 
 /* ---------- INIT ---------- */
 
 document.addEventListener('DOMContentLoaded', function() {
-  var path = window.location.pathname;
-  if (path.indexOf('dashboard') !== -1) {
-    initDashboardPage();
-  } else {
-    initIndexPage();
-  }
+ var path = window.location.pathname;
+ if (path.indexOf('dashboard') !== -1) {
+ initDashboardPage();
+ } else {
+ initIndexPage();
+ }
 });
