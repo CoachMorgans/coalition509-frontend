@@ -569,7 +569,7 @@ function setupCampaignFilters() {
 
 function canManageCampaigns() {
  var user = getCurrentUser();
- return user && ['superadmin', 'admin', 'manager'].indexOf(user.role) !== -1;
+ return user && ['superadmin', 'admin', 'manager', 'user'].indexOf(user.role) !== -1;
 }
 
 function viewCampaign(id) { showToast('Detail campagne ' + id + ' — a implementer', 'info'); }
