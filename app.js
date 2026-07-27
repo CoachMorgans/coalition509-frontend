@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.3.4 (Fix users/orders array parsing)
+ Version: 1.3.5 (Fix Actions column visibility)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
