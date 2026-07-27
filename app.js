@@ -517,7 +517,7 @@ function loadCampaigns() {
  return;
  }
  tbody.innerHTML = list.map(function(c) {
- return '<tr><td><strong>' + escapeHtml(c.name) + '</strong><br><small>' + (c.slug || '') + '</small></td><td><span class="badge">' + (c.election_type || '—') + '</span></td><td>' + escapeHtml(c.region || '—') + (c.commune ? '<br><small>' + escapeHtml(c.commune) + '</small>' : '') + '</td><td>' + formatDate(c.election_date) + '</td><td><span class="status-badge status-' + (c.status || '—').toLowerCase() + '">' + (c.status || '—') + '</span></td><td>' + formatCurrency(c.price_total || c.price_ht || 0) + '</td><td>' + (canManageCampaigns() ? '<button onclick="editCampaign(' + c.id + ')" class="btn-icon">✏️</button> <button onclick="viewCampaign(' + c.id + ')" class="btn-icon">👁️</button>' : '') + '</td></tr>';
+ return '<tr><td><strong>' + escapeHtml(c.name) + '</strong><br><small>' + (c.slug || '') + '</small></td><td><span class="badge">' + (c.election_type || '—') + '</span></td><td>' + escapeHtml(c.region || '—') + (c.commune ? '<br><small>' + escapeHtml(c.commune) + '</small>' : '') + '</td><td>' + formatDate(c.election_date) + '</td><td><span class="status-badge status-' + (c.status || '—').toLowerCase() + '">' + (c.status || '—') + '</span></td><td>' + formatCurrency(c.price_total || c.price_ht || 0) + '</td><td>' + (canManageCampaigns() ? '<button onclick="editCampaign(' + c.id + ')" class="btn-icon" title="Editer">✏️</button> ' : '') + '<button onclick="viewCampaign(' + c.id + ')" class="btn-icon" title="Voir">👁️</button> + '</td></tr>';
  }).join('');
  renderCampaignPagination();
  });
