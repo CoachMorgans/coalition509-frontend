@@ -5,6 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coalition 509 — Connexion</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .mode-switcher {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e0e0e0;
+    }
+    .mode-switcher button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: #f5f5f5;
+      color: #666;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-switcher button.active {
+      background: #1a1a2e;
+      color: #fff;
+    }
+    .mode-switcher button:hover:not(.active) {
+      background: #e8e8e8;
+    }
+    .admin-hint {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+      margin-top: 8px;
+      display: none;
+    }
+    .admin-hint.visible {
+      display: block;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -13,6 +51,13 @@
         <h1>Coalition <span>509</span></h1>
       </div>
       <p class="subtitle">VoteConnect Ecosystem — ChallengeFinancier™</p>
+
+      <!-- SELECTEUR MODE CONNEXION -->
+      <div class="mode-switcher">
+        <button class="active" id="mode-user" data-mode="user">👤 Utilisateur</button>
+        <button id="mode-admin" data-mode="admin">🔒 Administrateur</button>
+      </div>
+      <p class="admin-hint" id="admin-hint">Mode administrateur — connexion uniquement</p>
 
       <div class="tabs">
         <button class="tab-btn active" data-tab="login">Connexion</button>
