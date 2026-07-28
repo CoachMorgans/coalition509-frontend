@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.4 (FCFA partout + Canvas Fix + Detail/Edit)
+ Version: 1.4.5 (Admin/User Login + FCFA + Canvas Fix)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -75,6 +75,18 @@ function formatNumber(n) {
  if (n === null || n === undefined || isNaN(Number(n))) return '0';
  return Number(n).toLocaleString('fr-FR');
 }
+
+function isAdmin() {
+ var user = getCurrentUser();
+ return user && (user.role === 'admin' || user.role === 'superadmin');
+}
+
+function isManager() {
+ var user = getCurrentUser();
+ return user && (user.role === 'admin' || user.role === 'superadmin' || user.role === 'manager');
+}
+
+
 
 function getAuthHeaders() {
  var jwt = localStorage.getItem('c509_jwt');
@@ -263,6 +275,42 @@ function initIndexPage() {
  else if (formType === 'register') attachRegisterHandler(form);
  });
 
+ // Detection mode connexion admin (boutons/liens avec texte admin)
+ var adminBtns = Array.from(document.querySelectorAll('button, a, div[role="tab"], .nav-link'));
+ adminBtns.forEach(function(btn) {
+  var txt = btn.textContent.toLowerCase().trim();
+  var isAdminBtn = txt.indexOf('administrateur') !== -1 || txt.indexOf('admin') !== -1 || txt.indexOf('superviseur') !== -1;
+  var isUserBtn = txt.indexOf('utilisateur') !== -1 || txt.indexOf('membre') !== -1 || txt.indexOf('animateur') !== -1;
+  if (isAdminBtn && !btn._c509_adminAttached) {
+   btn._c509_adminAttached = true;
+   btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    localStorage.setItem('c509_login_mode', 'admin');
+    // Cacher inscription, montrer connexion
+    var regContainers = ['register','inscription','register-form','inscription-form'];
+    regContainers.forEach(function(id) {
+     var el = document.getElementById(id);
+     if (el) el.style.display = 'none';
+    });
+    var logContainers = ['login','connexion','login-form','connexion-form'];
+    logContainers.forEach(function(id) {
+     var el = document.getElementById(id);
+     if (el) el.style.display = '';
+    });
+    showToast('Mode connexion Administrateur active.', 'info');
+   });
+  }
+  if (isUserBtn && !btn._c509_userAttached) {
+   btn._c509_userAttached = true;
+   btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    localStorage.removeItem('c509_login_mode');
+    showToast('Mode connexion Utilisateur active.', 'info');
+   });
+  }
+ });
+ });
+
  if (allForms.length === 0) {
  var loginContainer = document.getElementById('login') || document.getElementById('connexion') || document.getElementById('login-form') || document.getElementById('connexion-form');
  var registerContainer = document.getElementById('register') || document.getElementById('inscription') || document.getElementById('register-form') || document.getElementById('inscription-form');
@@ -311,8 +359,20 @@ function attachLoginHandler(container) {
  localStorage.setItem('c509_jwt', data.access_token);
  localStorage.setItem('c509_user', JSON.stringify(data.user));
  localStorage.setItem('c509_auth_source', 'manual');
- showToast('Connexion reussie !', 'success');
- setTimeout(function() { window.location.href = 'dashboard.html'; }, 800);
+ var isAdminMode = localStorage.getItem('c509_login_mode') === 'admin';
+ var userIsAdmin = data.user && (data.user.role === 'admin' || data.user.role === 'superadmin');
+ if (isAdminMode && !userIsAdmin) {
+  showToast('Acces administrateur refuse. Redirection utilisateur.', 'error');
+  localStorage.removeItem('c509_login_mode');
+  setTimeout(function() { window.location.href = 'dashboard.html'; }, 1500);
+ } else if (isAdminMode && userIsAdmin) {
+  showToast('Connexion Administrateur reussie !', 'success');
+  localStorage.removeItem('c509_login_mode');
+  setTimeout(function() { window.location.href = 'dashboard.html'; }, 800);
+ } else {
+  showToast('Connexion reussie !', 'success');
+  setTimeout(function() { window.location.href = 'dashboard.html'; }, 800);
+ }
  } else {
  showToast(data.detail || 'Identifiants incorrects', 'error');
  }
@@ -415,6 +475,7 @@ function initDashboardPage() {
  setupCampaignFilters();
  setupMobileMenu();
  fixCampaignLabels();
+ setupAdminFeatures();
  updateSidebarProfile();
  refreshUserFromAPI();
  loadSection('overview');
@@ -499,6 +560,39 @@ function updateSidebarProfile() {
  } else if (elBadge) {
  elBadge.style.display = 'none';
  }
+}
+
+function setupAdminFeatures() {
+ var user = getCurrentUser();
+ if (!user) return;
+ var isAdminUser = user.role === 'admin' || user.role === 'superadmin';
+ var isManagerUser = isAdminUser || user.role === 'manager';
+
+ // Badge admin dans sidebar
+ var badgeEl = document.querySelector('.admin-badge, #admin-badge');
+ if (badgeEl) {
+  badgeEl.style.display = isAdminUser ? 'inline-block' : 'none';
+  if (isAdminUser) badgeEl.textContent = 'ADMIN';
+ }
+
+ // Bouton Nouvelle campagne
+ var btnCreate = document.getElementById('btn-create-campaign');
+ if (btnCreate) btnCreate.style.display = isManagerUser ? '' : 'none';
+
+ // Boutons edit dans le tableau
+ var editBtns = document.querySelectorAll('.btn-edit-campaign');
+ editBtns.forEach(function(b) { b.style.display = isManagerUser ? '' : 'none'; });
+
+ // Section utilisateurs visible seulement admin
+ var usersNav = document.querySelector('.nav-item[data-section="users"]');
+ if (usersNav && !isAdminUser) usersNav.style.display = 'none';
+
+ // Section commandes visible admin + manager
+ var ordersNav = document.querySelector('.nav-item[data-section="orders"]');
+ if (ordersNav && !isManagerUser) ordersNav.style.display = 'none';
+
+ // Log dans console
+ console.log('[ADMIN] Role:', user.role, '| Admin:', isAdminUser, '| Manager:', isManagerUser);
 }
 
 function loadOverviewStats() {
@@ -708,7 +802,7 @@ function setupCampaignFilters() {
 
 function canManageCampaigns() {
  var user = getCurrentUser();
- return user && ['superadmin', 'admin', 'manager', 'user'].indexOf(user.role) !== -1;
+ return user && ['superadmin', 'admin', 'manager'].indexOf(user.role) !== -1;
 }
 
 function viewCampaign(id) {
