@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.0 (Bot Stats Dashboard)
+ Version: 1.4.1 (Canvas Fix — Bot Challenger)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -67,6 +67,26 @@ function formatCurrency(n) {
 function formatNumber(n) {
  if (n === null || n === undefined || isNaN(Number(n))) return '0';
  return Number(n).toLocaleString('fr-FR');
+}
+
+
+/* ---------- CHART REGISTRY (Fix Canvas already in use) ---------- */
+
+const chartRegistry = {};
+
+function safeChartCreate(canvasId, config) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    if (chartRegistry[canvasId]) {
+        chartRegistry[canvasId].destroy();
+        delete chartRegistry[canvasId];
+    }
+    var existing = Chart.getChart ? Chart.getChart(canvas) : null;
+    if (existing) existing.destroy();
+    var ctx = canvas.getContext('2d');
+    var chart = new Chart(ctx, config);
+    chartRegistry[canvasId] = chart;
+    return chart;
 }
 
 function getAuthHeaders() {
@@ -570,7 +590,7 @@ function renderBotChart(history) {
  var conversations = history.map(function(h) { return h.conversations; });
  var leads = history.map(function(h) { return h.leads; });
 
- new Chart(canvas, {
+ safeChartCreate("bot-stats-chart", {
  type: "line",
  data: {
  labels: labels,
