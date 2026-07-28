@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.5 (Admin/User Login + FCFA + Canvas Fix)
+ Version: 1.4.6 (Fix syntaxe + Mode Admin/User)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -42,6 +42,7 @@ function logout() {
  localStorage.removeItem('c509_user');
  localStorage.removeItem('c509_auth_source');
  localStorage.removeItem('c509_jwt');
+ localStorage.removeItem('c509_login_mode');
  window.location.href = 'index.html';
 }
 
@@ -85,8 +86,6 @@ function isManager() {
  var user = getCurrentUser();
  return user && (user.role === 'admin' || user.role === 'superadmin' || user.role === 'manager');
 }
-
-
 
 function getAuthHeaders() {
  var jwt = localStorage.getItem('c509_jwt');
@@ -254,6 +253,64 @@ function initIndexPage() {
  });
  }
 
+ // === SELECTEUR MODE USER/ADMIN (nouveau index.html) ===
+ var modeUserBtn = document.getElementById('mode-user');
+ var modeAdminBtn = document.getElementById('mode-admin');
+ var adminHint = document.getElementById('admin-hint');
+
+ function setAdminMode(active) {
+  if (active) {
+   localStorage.setItem('c509_login_mode', 'admin');
+   if (modeAdminBtn) modeAdminBtn.classList.add('active');
+   if (modeUserBtn) modeUserBtn.classList.remove('active');
+   if (adminHint) adminHint.classList.add('visible');
+   // Cacher inscription + tab inscription
+   var regContainers = ['register','inscription','register-form','inscription-form'];
+   regContainers.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+   });
+   var logContainers = ['login','connexion','login-form','connexion-form'];
+   logContainers.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = '';
+   });
+   // Desactiver tab inscription
+   tabBtns.forEach(function(b) {
+    var txt = b.textContent.toLowerCase();
+    if (txt.indexOf('inscription') !== -1 || txt.indexOf('register') !== -1) {
+     b.style.display = 'none';
+    }
+    if (txt.indexOf('connexion') !== -1 || txt.indexOf('login') !== -1) {
+     b.classList.add('active');
+    }
+   });
+   switchTab('login');
+  } else {
+   localStorage.removeItem('c509_login_mode');
+   if (modeUserBtn) modeUserBtn.classList.add('active');
+   if (modeAdminBtn) modeAdminBtn.classList.remove('active');
+   if (adminHint) adminHint.classList.remove('visible');
+   // Remettre tabs visibles
+   tabBtns.forEach(function(b) {
+    b.style.display = '';
+   });
+  }
+ }
+
+ if (modeUserBtn) {
+  modeUserBtn.addEventListener('click', function() { setAdminMode(false); });
+ }
+ if (modeAdminBtn) {
+  modeAdminBtn.addEventListener('click', function() { setAdminMode(true); });
+ }
+
+ // Restaurer mode admin si deja selectionne
+ if (localStorage.getItem('c509_login_mode') === 'admin') {
+  setAdminMode(true);
+ }
+
+ // === DETECTION FORMULAIRES ===
  var allForms = Array.from(document.querySelectorAll('form'));
  allForms.forEach(function(form) {
  var submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
@@ -275,42 +332,7 @@ function initIndexPage() {
  else if (formType === 'register') attachRegisterHandler(form);
  });
 
- // Detection mode connexion admin (boutons/liens avec texte admin)
- var adminBtns = Array.from(document.querySelectorAll('button, a, div[role="tab"], .nav-link'));
- adminBtns.forEach(function(btn) {
-  var txt = btn.textContent.toLowerCase().trim();
-  var isAdminBtn = txt.indexOf('administrateur') !== -1 || txt.indexOf('admin') !== -1 || txt.indexOf('superviseur') !== -1;
-  var isUserBtn = txt.indexOf('utilisateur') !== -1 || txt.indexOf('membre') !== -1 || txt.indexOf('animateur') !== -1;
-  if (isAdminBtn && !btn._c509_adminAttached) {
-   btn._c509_adminAttached = true;
-   btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    localStorage.setItem('c509_login_mode', 'admin');
-    // Cacher inscription, montrer connexion
-    var regContainers = ['register','inscription','register-form','inscription-form'];
-    regContainers.forEach(function(id) {
-     var el = document.getElementById(id);
-     if (el) el.style.display = 'none';
-    });
-    var logContainers = ['login','connexion','login-form','connexion-form'];
-    logContainers.forEach(function(id) {
-     var el = document.getElementById(id);
-     if (el) el.style.display = '';
-    });
-    showToast('Mode connexion Administrateur active.', 'info');
-   });
-  }
-  if (isUserBtn && !btn._c509_userAttached) {
-   btn._c509_userAttached = true;
-   btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    localStorage.removeItem('c509_login_mode');
-    showToast('Mode connexion Utilisateur active.', 'info');
-   });
-  }
- });
- });
-
+ // Fallback si pas de forms detectes
  if (allForms.length === 0) {
  var loginContainer = document.getElementById('login') || document.getElementById('connexion') || document.getElementById('login-form') || document.getElementById('connexion-form');
  var registerContainer = document.getElementById('register') || document.getElementById('inscription') || document.getElementById('register-form') || document.getElementById('inscription-form');
@@ -318,6 +340,7 @@ function initIndexPage() {
  if (registerContainer) attachRegisterHandler(registerContainer);
  }
 
+ // Pre-remplissage telephone depuis bot pending
  var pendingPhone = localStorage.getItem('c509_pending_phone');
  var authSource = localStorage.getItem('c509_auth_source');
  if (pendingPhone && authSource === 'bot_pending') {
