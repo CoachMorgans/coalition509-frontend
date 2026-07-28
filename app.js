@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.3 (FCFA complet + Canvas Fix + Detail/Edit)
+ Version: 1.4.4 (FCFA partout + Canvas Fix + Detail/Edit)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
