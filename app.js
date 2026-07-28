@@ -1,10 +1,11 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.1 (Canvas Fix — Bot Challenger)
+ Version: 1.4.2 (Canvas Fix + FCFA + Detail/Edit Campagnes)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
+const FCFA_RATE = 4.5;
 
 /* ---------- UTILITAIRES ---------- */
 
@@ -64,29 +65,15 @@ function formatCurrency(n) {
  return Number(n).toLocaleString('fr-FR') + ' Gdes';
 }
 
+function formatFCFA(n, rate) {
+ rate = rate || FCFA_RATE;
+ if (n === null || n === undefined || isNaN(Number(n))) return '0 FCFA';
+ return Math.round(Number(n) * rate).toLocaleString('fr-FR') + ' FCFA';
+}
+
 function formatNumber(n) {
  if (n === null || n === undefined || isNaN(Number(n))) return '0';
  return Number(n).toLocaleString('fr-FR');
-}
-
-
-/* ---------- CHART REGISTRY (Fix Canvas already in use) ---------- */
-
-const chartRegistry = {};
-
-function safeChartCreate(canvasId, config) {
-    var canvas = document.getElementById(canvasId);
-    if (!canvas) return null;
-    if (chartRegistry[canvasId]) {
-        chartRegistry[canvasId].destroy();
-        delete chartRegistry[canvasId];
-    }
-    var existing = Chart.getChart ? Chart.getChart(canvas) : null;
-    if (existing) existing.destroy();
-    var ctx = canvas.getContext('2d');
-    var chart = new Chart(ctx, config);
-    chartRegistry[canvasId] = chart;
-    return chart;
 }
 
 function getAuthHeaders() {
@@ -142,6 +129,25 @@ function findInput(container, types, names, placeholderKeywords, ids) {
  }
  }
  return null;
+}
+
+/* ---------- CHART REGISTRY (Fix Canvas already in use) ---------- */
+
+const chartRegistry = {};
+
+function safeChartCreate(canvasId, config) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    if (chartRegistry[canvasId]) {
+        chartRegistry[canvasId].destroy();
+        delete chartRegistry[canvasId];
+    }
+    var existing = Chart.getChart ? Chart.getChart(canvas) : null;
+    if (existing) existing.destroy();
+    var ctx = canvas.getContext('2d');
+    var chart = new Chart(ctx, config);
+    chartRegistry[canvasId] = chart;
+    return chart;
 }
 
 /* ---------- AUTO-AUTH BOT ---------- */
@@ -400,7 +406,6 @@ function initDashboardPage() {
  updateSidebarProfile();
  refreshUserFromAPI();
  loadSection('overview');
- // FORCER le chargement des stats bot
  console.log('[DASHBOARD] Appel loadBotStats...');
  setTimeout(loadBotStats, 500);
 }
@@ -506,8 +511,6 @@ function loadOverviewStats() {
  }).catch(function(e) {
  container.innerHTML = '<div class="text-error">Impossible de charger les statistiques.</div>';
  });
-
- // CHARGER LES STATS BOT
  loadBotStats();
 }
 
@@ -641,7 +644,7 @@ function loadCampaigns() {
  return;
  }
  tbody.innerHTML = list.map(function(c) {
- return '<tr><td><strong>' + escapeHtml(c.name) + '</strong><br><small>' + (c.slug || '') + '</small></td><td><span class="badge">' + (c.election_type || '—') + '</span></td><td>' + escapeHtml(c.region || '—') + (c.commune ? '<br><small>' + escapeHtml(c.commune) + '</small>' : '') + '</td><td>' + formatDate(c.election_date) + '</td><td><span class="status-badge status-' + (c.status || '—').toLowerCase() + '">' + (c.status || '—') + '</span></td><td>' + formatCurrency(c.price_total || c.price_ht || 0) + '</td><td>' + (canManageCampaigns() ? '<button onclick="editCampaign(' + c.id + ')" class="btn-icon" title="Editer">✏️</button> ' : '') + '<button onclick="viewCampaign(' + c.id + ')" class="btn-icon" title="Voir">👁️</button></td></tr>';
+ return '<tr><td><strong>' + escapeHtml(c.name) + '</strong><br><small>' + (c.slug || '') + '</small></td><td><span class="badge">' + (c.election_type || '—') + '</span></td><td>' + escapeHtml(c.region || '—') + (c.commune ? '<br><small>' + escapeHtml(c.commune) + '</small>' : '') + '</td><td>' + formatDate(c.election_date) + '</td><td><span class="status-badge status-' + (c.status || '—').toLowerCase() + '">' + (c.status || '—') + '</span></td><td>' + formatFCFA(c.price_ht || c.price_total || 0) + '</td><td>' + (canManageCampaigns() ? '<button onclick="editCampaign(' + c.id + ')" class="btn-icon" title="Editer">✏️</button> ' : '') + '<button onclick="viewCampaign(' + c.id + ')" class="btn-icon" title="Voir">👁️</button></td></tr>';
  }).join('');
  renderCampaignPagination();
  });
@@ -696,8 +699,69 @@ function canManageCampaigns() {
  return user && ['superadmin', 'admin', 'manager', 'user'].indexOf(user.role) !== -1;
 }
 
-function viewCampaign(id) { showToast('Detail campagne ' + id + ' — a implementer', 'info'); }
-function editCampaign(id) { showToast('Edition campagne ' + id + ' — a implementer', 'info'); }
+function viewCampaign(id) {
+ apiFetch('/api/v1/campaigns?id=' + id).then(function(res) {
+ if (!res.ok) throw new Error('Erreur chargement campagne');
+ return res.json();
+ }).then(function(c) {
+ var modalId = 'modal-campaign-detail';
+ var existing = document.getElementById(modalId);
+ if (existing) existing.remove();
+ var modal = document.createElement('div');
+ modal.id = modalId;
+ modal.className = 'modal active';
+ modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+ modal.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:560px;width:90%;max-height:90vh;overflow-y:auto;padding:28px;position:relative;">' +
+   '<button onclick="this.closest(\'.modal\').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;">&times;</button>' +
+   '<h2 style="margin:0 0 18px 0;font-size:20px;color:#1a1a2e;">' + escapeHtml(c.name) + '</h2>' +
+   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">' +
+   '<div><small style="color:#888;">Type</small><div style="font-weight:600;">' + (c.election_type || '—') + '</div></div>' +
+   '<div><small style="color:#888;">Statut</small><div style="font-weight:600;">' + (c.status || '—') + '</div></div>' +
+   '<div><small style="color:#888;">Region</small><div style="font-weight:600;">' + escapeHtml(c.region || '—') + '</div></div>' +
+   '<div><small style="color:#888;">Commune</small><div style="font-weight:600;">' + escapeHtml(c.commune || '—') + '</div></div>' +
+   '<div><small style="color:#888;">Date election</small><div style="font-weight:600;">' + formatDate(c.election_date) + '</div></div>' +
+   '<div><small style="color:#888;">Prix HT</small><div style="font-weight:600;color:#27ae60;">' + formatFCFA(c.price_ht || c.price_total || 0) + '</div></div>' +
+   '</div>' +
+   '<div style="margin-bottom:18px;"><small style="color:#888;">Description</small><div style="margin-top:4px;">' + escapeHtml(c.description || 'Aucune description') + '</div></div>' +
+   '<div style="text-align:right;"><button onclick="this.closest(\'.modal\').remove()" style="padding:10px 22px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;cursor:pointer;">Fermer</button></div>' +
+   '</div>';
+ document.body.appendChild(modal);
+ modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+ }).catch(function(e) {
+ showToast('Erreur: ' + e.message, 'error');
+ });
+}
+
+function editCampaign(id) {
+ if (!canManageCampaigns()) { showToast('Permission insuffisante.', 'error'); return; }
+ apiFetch('/api/v1/campaigns?id=' + id).then(function(res) {
+ if (!res.ok) throw new Error('Erreur chargement campagne');
+ return res.json();
+ }).then(function(c) {
+ var modal = document.getElementById('modal-campaign');
+ if (!modal) { showToast('Modal non trouve.', 'error'); return; }
+ var form = document.getElementById('form-campaign');
+ if (!form) { showToast('Formulaire non trouve.', 'error'); return; }
+ document.getElementById('camp-name').value = c.name || '';
+ var typeSel = document.getElementById('camp-type');
+ if (typeSel) typeSel.value = c.election_type || '';
+ document.getElementById('camp-region').value = c.region || '';
+ document.getElementById('camp-commune').value = c.commune || '';
+ document.getElementById('camp-date').value = c.election_date || '';
+ document.getElementById('camp-desc').value = c.description || '';
+ document.getElementById('camp-price').value = c.price_ht || c.price_total || 0;
+ var pricingSel = document.getElementById('camp-pricing');
+ if (pricingSel) pricingSel.value = c.pricing_model || 'forfait';
+ var titleEl = modal.querySelector('.modal-title, h2, h3');
+ if (titleEl) titleEl.textContent = 'Modifier la campagne';
+ var submitBtn = form.querySelector('button[type="submit"]');
+ if (submitBtn) { submitBtn.textContent = 'Enregistrer'; submitBtn.dataset.originalText = 'Enregistrer'; }
+ modal.dataset.campaignId = id;
+ modal.classList.add('active');
+ }).catch(function(e) {
+ showToast('Erreur: ' + e.message, 'error');
+ });
+}
 
 function setupCampaignModal() {
  var modal = document.getElementById('modal-campaign');
@@ -707,6 +771,12 @@ function setupCampaignModal() {
  if (btnOpen && modal) {
  btnOpen.addEventListener('click', function() {
  if (!canManageCampaigns()) { showToast('Permission insuffisante.', 'error'); return; }
+ form.reset();
+ delete modal.dataset.campaignId;
+ var titleEl = modal.querySelector('.modal-title, h2, h3');
+ if (titleEl) titleEl.textContent = 'Nouvelle campagne';
+ var submitBtn = form.querySelector('button[type="submit"]');
+ if (submitBtn) { submitBtn.textContent = 'Creer'; submitBtn.dataset.originalText = 'Creer'; }
  modal.classList.add('active');
  });
  }
@@ -721,7 +791,7 @@ function setupCampaignModal() {
  e.preventDefault();
  var btn = form.querySelector('button[type="submit"]');
  var originalText = btn ? btn.textContent : 'Creer';
- if (btn) { btn.disabled = true; btn.textContent = 'Creation...'; }
+ if (btn) { btn.disabled = true; btn.textContent = 'Envoi...'; }
  var payload = {
  name: document.getElementById('camp-name') ? document.getElementById('camp-name').value.trim() : '',
  election_type: document.getElementById('camp-type') ? document.getElementById('camp-type').value : '',
@@ -737,15 +807,23 @@ function setupCampaignModal() {
  if (btn) { btn.disabled = false; btn.textContent = originalText; }
  return;
  }
- apiFetch('/api/v1/campaigns', { method: 'POST', body: JSON.stringify(payload) }).then(function(res) {
+ var campaignId = modal.dataset.campaignId;
+ var method = campaignId ? 'PUT' : 'POST';
+ var path = campaignId ? '/api/v1/campaigns?id=' + campaignId : '/api/v1/campaigns';
+ apiFetch(path, { method: method, body: JSON.stringify(payload) }).then(function(res) {
  return res.json().then(function(data) {
- if (res.status === 201) {
- showToast('Campagne creee avec succes !', 'success');
+ if (res.status === 200 || res.status === 201) {
+ showToast(campaignId ? 'Campagne mise a jour !' : 'Campagne creee avec succes !', 'success');
  modal.classList.remove('active');
  form.reset();
+ delete modal.dataset.campaignId;
+ var titleEl = modal.querySelector('.modal-title, h2, h3');
+ if (titleEl) titleEl.textContent = 'Nouvelle campagne';
+ var submitBtn = form.querySelector('button[type="submit"]');
+ if (submitBtn) submitBtn.textContent = submitBtn.dataset.originalText || 'Creer';
  loadCampaigns();
  } else {
- showToast(data.detail || 'Erreur creation campagne', 'error');
+ showToast(data.detail || 'Erreur campagne', 'error');
  }
  });
  }).catch(function() {
