@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.6 (Fix syntaxe + Mode Admin/User)
+ Version: 1.4.7 (Bot Stats LIVE + Multi-ID fallback)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -683,17 +683,21 @@ function loadBotStats() {
 }
 
 function renderBotStats(latest) {
- var containers = {
- "bot-conversations": latest.total_conversations || 0,
- "bot-active": latest.active_conversations || 0,
- "bot-leads": latest.leads_generated || 0,
- "bot-conversions": latest.conversions || 0,
- "bot-messages": latest.messages_sent || 0
- };
- for (var id in containers) {
- var el = document.getElementById(id);
- if (el) el.textContent = formatNumber(containers[id]);
- }
+ var mappings = [
+  { keys: ['bot-conversations','stat-conversations','conversations-total','conv-total'], value: latest.total_conversations || 0 },
+  { keys: ['bot-active','stat-active','active-conversations','conv-active'], value: latest.active_conversations || 0 },
+  { keys: ['bot-leads','stat-leads','leads-generated','leads-total'], value: latest.leads_generated || 0 },
+  { keys: ['bot-conversions','stat-conversions','conversions-total'], value: latest.conversions || 0 },
+  { keys: ['bot-messages','stat-messages','messages-sent','messages-total'], value: latest.messages_sent || 0 }
+ ];
+ mappings.forEach(function(m) {
+  var found = false;
+  for (var i = 0; i < m.keys.length; i++) {
+   var el = document.getElementById(m.keys[i]);
+   if (el) { el.textContent = formatNumber(m.value); found = true; break; }
+  }
+  if (!found) console.warn('[BOT STATS] ID introuvable pour:', m.keys[0]);
+ });
  var verEl = document.getElementById("bot-version");
  if (verEl && latest.bot_version) verEl.textContent = 'v' + latest.bot_version;
  var tsEl = document.getElementById("bot-last-update");
