@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.2 (Canvas Fix + FCFA + Detail/Edit Campagnes)
+ Version: 1.4.3 (FCFA complet + Canvas Fix + Detail/Edit)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -393,6 +393,17 @@ function attachRegisterHandler(container) {
 
 /* ---------- DASHBOARD ---------- */
 
+function fixCampaignLabels() {
+ var modal = document.getElementById('modal-campaign');
+ if (!modal) return;
+ var labels = modal.querySelectorAll('label, .form-label, .field-label, .modal-label');
+ labels.forEach(function(lbl) {
+  if (lbl.textContent.indexOf('GDES') !== -1 || lbl.textContent.indexOf('Gdes') !== -1) {
+   lbl.textContent = lbl.textContent.replace(/GDES|Gdes/g, 'FCFA');
+  }
+ });
+}
+
 function initDashboardPage() {
  console.log('[DASHBOARD] initDashboardPage demarre');
  if (!isLoggedIn()) {
@@ -403,6 +414,7 @@ function initDashboardPage() {
  setupCampaignModal();
  setupCampaignFilters();
  setupMobileMenu();
+ fixCampaignLabels();
  updateSidebarProfile();
  refreshUserFromAPI();
  loadSection('overview');
@@ -501,12 +513,12 @@ function loadOverviewStats() {
  { label: 'Utilisateurs actifs', value: data.total_users || 0, icon: '👥', color: '#3498db', fmt: 'num' },
  { label: 'Campagnes actives', value: data.total_campaigns || 0, icon: '📢', color: '#e74c3c', fmt: 'num' },
  { label: 'Commandes TCL', value: data.total_orders || 0, icon: '🛒', color: '#f39c12', fmt: 'num' },
- { label: 'Revenus payes', value: data.total_revenue || 0, icon: '💰', color: '#27ae60', fmt: 'cur' },
+ { label: 'Revenus payes', value: data.total_revenue || 0, icon: '💰', color: '#27ae60', fmt: 'fcfa' },
  { label: 'Groupes actifs', value: data.total_groups || 0, icon: '👥', color: '#9b59b6', fmt: 'num' },
  { label: 'Retraits en attente', value: data.pending_withdrawals || 0, icon: '⏳', color: '#e67e22', fmt: 'num' },
  ];
  container.innerHTML = stats.map(function(s) {
- return '<div class="stat-card" style="border-left:4px solid ' + s.color + '"><div class="stat-icon">' + s.icon + '</div><div class="stat-value" style="color:' + s.color + '">' + (s.fmt === 'cur' ? formatCurrency(s.value) : formatNumber(s.value)) + '</div><div class="stat-label">' + s.label + '</div></div>';
+ return '<div class="stat-card" style="border-left:4px solid ' + s.color + '"><div class="stat-icon">' + s.icon + '</div><div class="stat-value" style="color:' + s.color + '">' + (s.fmt === 'fcfa' ? formatFCFA(s.value) : (s.fmt === 'cur' ? formatCurrency(s.value) : formatNumber(s.value))) + '</div><div class="stat-label">' + s.label + '</div></div>';
  }).join('');
  }).catch(function(e) {
  container.innerHTML = '<div class="text-error">Impossible de charger les statistiques.</div>';
