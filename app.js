@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.9 (Bot Stats — Approche radicale par DOM)
+ Version: 1.4.10 (Bot Stats — Fallback week + DOM)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -663,7 +663,7 @@ function loadBotStats() {
  return res.json();
  }).then(function(data) {
  console.log('[BOT STATS] Donnees recues:', JSON.stringify(data));
- renderBotStats(data.latest);
+ renderBotStats(data.latest, data.week);
  renderBotWeekStats(data.week);
  console.log('[BOT STATS] Appel API history...');
  return apiFetch('/api/bot/stats/history?days=7');
@@ -682,18 +682,23 @@ function loadBotStats() {
  });
 }
 
-function renderBotStats(latest) {
+function renderBotStats(latest, week) {
+ week = week || {};
  var section = document.getElementById('bot-stats-section');
  if (!section) { console.warn('[BOT STATS] Section introuvable'); return; }
+
+ // Fallback: si latest est a 0 mais week a des valeurs, utiliser week
+ var useWeek = latest.total_conversations === 0 && latest.leads_generated === 0 && latest.conversions === 0 && (week.leads > 0 || week.conversions > 0 || week.messages > 0);
+ if (useWeek) console.log('[BOT STATS] Fallback sur week car latest = 0');
 
  var data = {
   'Conversations totales': latest.total_conversations || 0,
   'Actives': latest.active_conversations || 0,
-  'Leads generees': latest.leads_generated || 0,
-  'Leads générés': latest.leads_generated || 0,
-  'Conversions': latest.conversions || 0,
-  'Messages envoyes': latest.messages_sent || 0,
-  'Messages envoyés': latest.messages_sent || 0
+  'Leads generees': useWeek ? (week.leads || 0) : (latest.leads_generated || 0),
+  'Leads générés': useWeek ? (week.leads || 0) : (latest.leads_generated || 0),
+  'Conversions': useWeek ? (week.conversions || 0) : (latest.conversions || 0),
+  'Messages envoyes': useWeek ? (week.messages || 0) : (latest.messages_sent || 0),
+  'Messages envoyés': useWeek ? (week.messages || 0) : (latest.messages_sent || 0)
  };
 
  // Approche radicale: pour chaque label connu, chercher dans la section
