@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.7 (Bot Stats LIVE + Multi-ID fallback)
+ Version: 1.4.8 (Bot Stats — Fallback par label texte)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -683,21 +683,60 @@ function loadBotStats() {
 }
 
 function renderBotStats(latest) {
- var mappings = [
-  { keys: ['bot-conversations','stat-conversations','conversations-total','conv-total'], value: latest.total_conversations || 0 },
-  { keys: ['bot-active','stat-active','active-conversations','conv-active'], value: latest.active_conversations || 0 },
-  { keys: ['bot-leads','stat-leads','leads-generated','leads-total'], value: latest.leads_generated || 0 },
-  { keys: ['bot-conversions','stat-conversions','conversions-total'], value: latest.conversions || 0 },
-  { keys: ['bot-messages','stat-messages','messages-sent','messages-total'], value: latest.messages_sent || 0 }
- ];
- mappings.forEach(function(m) {
-  var found = false;
-  for (var i = 0; i < m.keys.length; i++) {
-   var el = document.getElementById(m.keys[i]);
-   if (el) { el.textContent = formatNumber(m.value); found = true; break; }
+ var labelMap = {
+  'Conversations totales': latest.total_conversations || 0,
+  'Actives': latest.active_conversations || 0,
+  'Leads generees': latest.leads_generated || 0,
+  'Leads générés': latest.leads_generated || 0,
+  'Conversions': latest.conversions || 0,
+  'Messages envoyes': latest.messages_sent || 0,
+  'Messages envoyés': latest.messages_sent || 0
+ };
+ // Methode 1: par ID
+ var idMap = {
+  'bot-conversations': latest.total_conversations || 0,
+  'bot-active': latest.active_conversations || 0,
+  'bot-leads': latest.leads_generated || 0,
+  'bot-conversions': latest.conversions || 0,
+  'bot-messages': latest.messages_sent || 0
+ };
+ for (var id in idMap) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = formatNumber(idMap[id]);
+ }
+ // Methode 2: fallback par texte de label
+ var allLabels = document.querySelectorAll('.stat-label, .bot-stat-label, .label, [class*="label"]');
+ allLabels.forEach(function(lbl) {
+  var txt = lbl.textContent.trim();
+  for (var key in labelMap) {
+   if (txt.toLowerCase().replace(/s/g,'') === key.toLowerCase().replace(/s/g,'')) {
+    var parent = lbl.closest('.stat-card, .bot-stat, [class*="stat"]') || lbl.parentElement;
+    if (parent) {
+     var valEl = parent.querySelector('.stat-value, .value, [class*="value"], .number, h3, h4, strong');
+     if (valEl) valEl.textContent = formatNumber(labelMap[key]);
+    }
+   }
   }
-  if (!found) console.warn('[BOT STATS] ID introuvable pour:', m.keys[0]);
  });
+ // Methode 3: chercher dans la section bot-stats-section specifiquement
+ var botSection = document.getElementById('bot-stats-section');
+ if (botSection) {
+  var cards = botSection.querySelectorAll('.stat-card, [class*="stat"]');
+  var labelOrder = ['Conversations totales','Actives','Leads generees','Leads générés','Conversions','Messages envoyes','Messages envoyés'];
+  var valueOrder = [latest.total_conversations||0, latest.active_conversations||0, latest.leads_generated||0, latest.leads_generated||0, latest.conversions||0, latest.messages_sent||0, latest.messages_sent||0];
+  cards.forEach(function(card, idx) {
+   var lbl = card.querySelector('.stat-label, .label, small, div:last-child');
+   if (lbl) {
+    var txt = lbl.textContent.trim();
+    for (var i = 0; i < labelOrder.length; i++) {
+     if (txt.toLowerCase().replace(/[sé]/g,'e') === labelOrder[i].toLowerCase().replace(/[sé]/g,'e')) {
+      var valEl = card.querySelector('.stat-value, .value, h3, h4, strong, div:first-child');
+      if (valEl) valEl.textContent = formatNumber(valueOrder[i]);
+     }
+    }
+   }
+  });
+ }
  var verEl = document.getElementById("bot-version");
  if (verEl && latest.bot_version) verEl.textContent = 'v' + latest.bot_version;
  var tsEl = document.getElementById("bot-last-update");
