@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.3.6 (Stable — fix Actions column only)
+ Version: 1.4.0 (Bot Stats Dashboard)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -481,6 +481,97 @@ function loadOverviewStats() {
  }).join('');
  }).catch(function(e) {
  container.innerHTML = '<div class="text-error">Impossible de charger les statistiques.</div>';
+ });
+
+ // CHARGER LES STATS BOT
+ loadBotStats();
+}
+
+/* ---------- BOT STATS DASHBOARD ---------- */
+
+function loadBotStats() {
+ var container = document.getElementById('bot-stats-section');
+ if (!container) {
+ console.warn('[BOT STATS] Section #bot-stats-section introuvable dans le HTML');
+ return;
+ }
+ var token = localStorage.getItem("c509_jwt");
+ if (!token) return;
+
+ apiFetch('/api/bot/stats').then(function(res) {
+ if (!res.ok) throw new Error('Erreur stats bot');
+ return res.json();
+ }).then(function(data) {
+ renderBotStats(data.latest);
+ renderBotWeekStats(data.week);
+ return apiFetch('/api/bot/stats/history?days=7');
+ }).then(function(res) {
+ if (!res.ok) throw new Error('Erreur historique bot');
+ return res.json();
+ }).then(function(history) {
+ renderBotChart(history);
+ }).catch(function(e) {
+ console.error('[BOT STATS] Erreur:', e);
+ var errEl = document.getElementById('bot-stats-error');
+ if (errEl) errEl.textContent = 'Erreur de chargement des stats bot.';
+ });
+}
+
+function renderBotStats(latest) {
+ var containers = {
+ "bot-conversations": latest.total_conversations || 0,
+ "bot-active": latest.active_conversations || 0,
+ "bot-leads": latest.leads_generated || 0,
+ "bot-conversions": latest.conversions || 0,
+ "bot-messages": latest.messages_sent || 0
+ };
+ for (var id in containers) {
+ var el = document.getElementById(id);
+ if (el) el.textContent = formatNumber(containers[id]);
+ }
+ var verEl = document.getElementById("bot-version");
+ if (verEl && latest.bot_version) verEl.textContent = 'v' + latest.bot_version;
+ var tsEl = document.getElementById("bot-last-update");
+ if (tsEl && latest.recorded_at) {
+ var d = new Date(latest.recorded_at);
+ tsEl.textContent = d.toLocaleTimeString("fr-FR");
+ }
+}
+
+function renderBotWeekStats(week) {
+ var el = document.getElementById("bot-week-summary");
+ if (!el) return;
+ el.innerHTML =
+ '<div class="stat-row"><span>Leads (7j)</span><strong>' + (week.leads || 0) + '</strong></div>' +
+ '<div class="stat-row"><span>Conversions (7j)</span><strong>' + (week.conversions || 0) + '</strong></div>' +
+ '<div class="stat-row"><span>Messages (7j)</span><strong>' + (week.messages || 0) + '</strong></div>';
+}
+
+function renderBotChart(history) {
+ var canvas = document.getElementById("bot-stats-chart");
+ if (!canvas || typeof Chart === 'undefined') return;
+
+ var labels = history.map(function(h) {
+ return new Date(h.date).toLocaleDateString("fr-FR", {weekday: "short"});
+ });
+ var conversations = history.map(function(h) { return h.conversations; });
+ var leads = history.map(function(h) { return h.leads; });
+
+ new Chart(canvas, {
+ type: "line",
+ data: {
+ labels: labels,
+ datasets: [
+ { label: "Conversations", data: conversations, borderColor: "#3b82f6", tension: 0.3, fill: false },
+ { label: "Leads", data: leads, borderColor: "#10b981", tension: 0.3, fill: false }
+ ]
+ },
+ options: {
+ responsive: true,
+ maintainAspectRatio: false,
+ plugins: { legend: { position: "bottom" } },
+ scales: { y: { beginAtZero: true } }
+ }
  });
 }
 
