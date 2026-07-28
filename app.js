@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.8 (Bot Stats — Fallback par label texte)
+ Version: 1.4.9 (Bot Stats — Approche radicale par DOM)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -683,7 +683,10 @@ function loadBotStats() {
 }
 
 function renderBotStats(latest) {
- var labelMap = {
+ var section = document.getElementById('bot-stats-section');
+ if (!section) { console.warn('[BOT STATS] Section introuvable'); return; }
+
+ var data = {
   'Conversations totales': latest.total_conversations || 0,
   'Actives': latest.active_conversations || 0,
   'Leads generees': latest.leads_generated || 0,
@@ -692,51 +695,69 @@ function renderBotStats(latest) {
   'Messages envoyes': latest.messages_sent || 0,
   'Messages envoyés': latest.messages_sent || 0
  };
- // Methode 1: par ID
- var idMap = {
-  'bot-conversations': latest.total_conversations || 0,
-  'bot-active': latest.active_conversations || 0,
-  'bot-leads': latest.leads_generated || 0,
-  'bot-conversions': latest.conversions || 0,
-  'bot-messages': latest.messages_sent || 0
- };
- for (var id in idMap) {
-  var el = document.getElementById(id);
-  if (el) el.textContent = formatNumber(idMap[id]);
- }
- // Methode 2: fallback par texte de label
- var allLabels = document.querySelectorAll('.stat-label, .bot-stat-label, .label, [class*="label"]');
- allLabels.forEach(function(lbl) {
-  var txt = lbl.textContent.trim();
-  for (var key in labelMap) {
-   if (txt.toLowerCase().replace(/s/g,'') === key.toLowerCase().replace(/s/g,'')) {
-    var parent = lbl.closest('.stat-card, .bot-stat, [class*="stat"]') || lbl.parentElement;
+
+ // Approche radicale: pour chaque label connu, chercher dans la section
+ // un element feuille (pas d'enfants) avec ce texte exact,
+ // puis modifier son sibling precedent ou le premier enfant du parent
+ var allEls = section.querySelectorAll('*');
+ var updated = 0;
+ for (var i = 0; i < allEls.length; i++) {
+  var el = allEls[i];
+  if (el.children.length > 0) continue; // pas une feuille
+  var txt = el.textContent.trim();
+  for (var label in data) {
+   if (txt === label) {
+    var parent = el.parentElement;
     if (parent) {
-     var valEl = parent.querySelector('.stat-value, .value, [class*="value"], .number, h3, h4, strong');
-     if (valEl) valEl.textContent = formatNumber(labelMap[key]);
-    }
-   }
-  }
- });
- // Methode 3: chercher dans la section bot-stats-section specifiquement
- var botSection = document.getElementById('bot-stats-section');
- if (botSection) {
-  var cards = botSection.querySelectorAll('.stat-card, [class*="stat"]');
-  var labelOrder = ['Conversations totales','Actives','Leads generees','Leads générés','Conversions','Messages envoyes','Messages envoyés'];
-  var valueOrder = [latest.total_conversations||0, latest.active_conversations||0, latest.leads_generated||0, latest.leads_generated||0, latest.conversions||0, latest.messages_sent||0, latest.messages_sent||0];
-  cards.forEach(function(card, idx) {
-   var lbl = card.querySelector('.stat-label, .label, small, div:last-child');
-   if (lbl) {
-    var txt = lbl.textContent.trim();
-    for (var i = 0; i < labelOrder.length; i++) {
-     if (txt.toLowerCase().replace(/[sé]/g,'e') === labelOrder[i].toLowerCase().replace(/[sé]/g,'e')) {
-      var valEl = card.querySelector('.stat-value, .value, h3, h4, strong, div:first-child');
-      if (valEl) valEl.textContent = formatNumber(valueOrder[i]);
+     // Essayer le sibling precedent
+     var prev = el.previousElementSibling;
+     if (prev) {
+      prev.textContent = formatNumber(data[label]);
+      updated++;
+      console.log('[BOT STATS] Mis a jour (prev sibling):', label, '=', data[label]);
+      break;
+     }
+     // Essayer le premier enfant du parent
+     var first = parent.firstElementChild;
+     if (first && first !== el) {
+      first.textContent = formatNumber(data[label]);
+      updated++;
+      console.log('[BOT STATS] Mis a jour (first child):', label, '=', data[label]);
+      break;
+     }
+     // Essayer le parent du parent (grand-parent)
+     var grand = parent.parentElement;
+     if (grand) {
+      var gc = grand.firstElementChild;
+      if (gc && gc !== parent && gc !== el) {
+       gc.textContent = formatNumber(data[label]);
+       updated++;
+       console.log('[BOT STATS] Mis a jour (grand-child):', label, '=', data[label]);
+       break;
+      }
      }
     }
    }
-  });
+  }
  }
+
+ // Fallback: si aucune mise a jour, essayer par ID
+ if (updated === 0) {
+  console.warn('[BOT STATS] Aucune mise a jour par label, tentative par ID...');
+  var idMap = {
+   'bot-conversations': latest.total_conversations || 0,
+   'bot-active': latest.active_conversations || 0,
+   'bot-leads': latest.leads_generated || 0,
+   'bot-conversions': latest.conversions || 0,
+   'bot-messages': latest.messages_sent || 0
+  };
+  for (var id in idMap) {
+   var el = document.getElementById(id);
+   if (el) { el.textContent = formatNumber(idMap[id]); updated++; }
+  }
+ }
+
+ console.log('[BOT STATS] Cartes mises a jour:', updated);
  var verEl = document.getElementById("bot-version");
  if (verEl && latest.bot_version) verEl.textContent = 'v' + latest.bot_version;
  var tsEl = document.getElementById("bot-last-update");
