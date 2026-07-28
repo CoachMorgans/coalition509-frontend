@@ -368,6 +368,7 @@ function attachRegisterHandler(container) {
 /* ---------- DASHBOARD ---------- */
 
 function initDashboardPage() {
+ console.log('[DASHBOARD] initDashboardPage demarre');
  if (!isLoggedIn()) {
  window.location.replace('index.html');
  return;
@@ -379,6 +380,9 @@ function initDashboardPage() {
  updateSidebarProfile();
  refreshUserFromAPI();
  loadSection('overview');
+ // FORCER le chargement des stats bot
+ console.log('[DASHBOARD] Appel loadBotStats...');
+ setTimeout(loadBotStats, 500);
 }
 
 function setupNavigation() {
@@ -490,30 +494,39 @@ function loadOverviewStats() {
 /* ---------- BOT STATS DASHBOARD ---------- */
 
 function loadBotStats() {
+ console.log('[BOT STATS] === loadBotStats() appele ===');
  var container = document.getElementById('bot-stats-section');
  if (!container) {
  console.warn('[BOT STATS] Section #bot-stats-section introuvable dans le HTML');
  return;
  }
  var token = localStorage.getItem("c509_jwt");
- if (!token) return;
+ console.log('[BOT STATS] Token JWT present:', !!token);
+ if (!token) { console.warn('[BOT STATS] Pas de token, abandon'); return; }
 
+ console.log('[BOT STATS] Appel API /api/bot/stats...');
  apiFetch('/api/bot/stats').then(function(res) {
- if (!res.ok) throw new Error('Erreur stats bot');
+ console.log('[BOT STATS] Reponse API stats:', res.status);
+ if (!res.ok) throw new Error('Erreur stats bot: ' + res.status);
  return res.json();
  }).then(function(data) {
+ console.log('[BOT STATS] Donnees recues:', JSON.stringify(data));
  renderBotStats(data.latest);
  renderBotWeekStats(data.week);
+ console.log('[BOT STATS] Appel API history...');
  return apiFetch('/api/bot/stats/history?days=7');
  }).then(function(res) {
- if (!res.ok) throw new Error('Erreur historique bot');
+ console.log('[BOT STATS] Reponse history:', res.status);
+ if (!res.ok) throw new Error('Erreur historique bot: ' + res.status);
  return res.json();
  }).then(function(history) {
+ console.log('[BOT STATS] Historique recu, lignes:', history.length);
  renderBotChart(history);
+ console.log('[BOT STATS] === Tout charge ===');
  }).catch(function(e) {
- console.error('[BOT STATS] Erreur:', e);
+ console.error('[BOT STATS] ERREUR:', e.message);
  var errEl = document.getElementById('bot-stats-error');
- if (errEl) errEl.textContent = 'Erreur de chargement des stats bot.';
+ if (errEl) errEl.textContent = 'Erreur: ' + e.message;
  });
 }
 
