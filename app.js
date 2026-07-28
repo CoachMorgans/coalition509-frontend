@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.4.10 (Bot Stats — Fallback week + DOM)
+ Version: 1.5.0 (Profil + Paiement + Export CSV)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -499,6 +499,9 @@ function initDashboardPage() {
  setupMobileMenu();
  fixCampaignLabels();
  setupAdminFeatures();
+ setupProfileForm();
+ setupPaymentModal();
+ setupExportButtons();
  updateSidebarProfile();
  refreshUserFromAPI();
  loadSection('overview');
@@ -537,6 +540,7 @@ function loadSection(sectionName) {
  case 'campaigns': loadCampaigns(); break;
  case 'users': loadUsers(); break;
  case 'orders': loadOrders(); break;
+ case 'profile': loadProfile(); break;
  }
 }
 
@@ -1088,6 +1092,240 @@ function escapeHtml(text) {
  div.textContent = text;
  return div.innerHTML;
 }
+
+
+/* ---------- PROFIL UTILISATEUR (NOUVEAU v1.5.0) ---------- */
+
+function loadProfile() {
+ var section = document.getElementById('section-profile');
+ if (!section) return;
+ var user = getCurrentUser();
+ if (!user) return;
+
+ // Remplir les champs du formulaire
+ var fields = {
+  'prof-first-name': user.first_name,
+  'prof-last-name': user.last_name,
+  'prof-phone': user.phone,
+  'prof-email': user.email || '',
+  'prof-region': user.region || '',
+  'prof-commune': user.commune || '',
+  'prof-ngd-id': user.ngd_id,
+  'prof-role': user.role,
+  'prof-profile-type': user.profile_type
+ };
+ for (var id in fields) {
+  var el = document.getElementById(id);
+  if (el) el.value = fields[id] || '';
+ }
+
+ // Affichage lecture seule
+ var readOnly = {
+  'prof-display-name': (user.first_name || '') + ' ' + (user.last_name || ''),
+  'prof-display-phone': user.phone,
+  'prof-display-email': user.email || '—',
+  'prof-display-region': user.region || '—',
+  'prof-display-commune': user.commune || '—',
+  'prof-display-ngd': user.ngd_id,
+  'prof-display-role': user.role,
+  'prof-display-profile': user.profile_type
+ };
+ for (var id in readOnly) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = readOnly[id];
+ }
+}
+
+function setupProfileForm() {
+ var form = document.getElementById('form-profile');
+ if (!form) return;
+ form.addEventListener('submit', function(e) {
+  e.preventDefault();
+  var btn = form.querySelector('button[type="submit"]');
+  var originalText = btn ? btn.textContent : 'Enregistrer';
+  if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement...'; }
+
+  var payload = {
+   first_name: document.getElementById('prof-first-name') ? document.getElementById('prof-first-name').value.trim() : '',
+   last_name: document.getElementById('prof-last-name') ? document.getElementById('prof-last-name').value.trim() : '',
+   phone: document.getElementById('prof-phone') ? document.getElementById('prof-phone').value.trim().replace(/\s/g, '') : '',
+   email: document.getElementById('prof-email') ? document.getElementById('prof-email').value.trim() : '',
+   region: document.getElementById('prof-region') ? document.getElementById('prof-region').value.trim() : '',
+   commune: document.getElementById('prof-commune') ? document.getElementById('prof-commune').value.trim() : ''
+  };
+
+  var newPin = document.getElementById('prof-new-pin');
+  var confirmPin = document.getElementById('prof-confirm-pin');
+  if (newPin && newPin.value.trim()) {
+   var pin = newPin.value.trim();
+   var confirm = confirmPin ? confirmPin.value.trim() : '';
+   if (pin !== confirm) {
+    showToast('Les PINs ne correspondent pas.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    return;
+   }
+   if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    showToast('Le PIN doit etre 4 chiffres.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    return;
+   }
+   payload.pin = pin;
+  }
+
+  apiFetch('/api/v1/auth/me', { method: 'PUT', body: JSON.stringify(payload) })
+   .then(function(res) {
+    if (!res.ok) throw new Error('Erreur ' + res.status);
+    return res.json();
+   })
+   .then(function(user) {
+    setCurrentUser(user);
+    updateSidebarProfile();
+    loadProfile();
+    showToast('Profil mis a jour avec succes !', 'success');
+    // Reset les champs PIN
+    if (newPin) newPin.value = '';
+    if (confirmPin) confirmPin.value = '';
+   })
+   .catch(function(e) {
+    showToast('Erreur: ' + e.message, 'error');
+   })
+   .finally(function() {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+   });
+ });
+}
+
+/* ---------- PAIEMENT (NOUVEAU v1.5.0) ---------- */
+
+function openPaymentModal(orderId, amount) {
+ var modal = document.getElementById('modal-payment');
+ if (!modal) return;
+ document.getElementById('pay-order-id').value = orderId;
+ document.getElementById('pay-amount').textContent = formatCurrency(amount) + ' / ' + formatFCFA(amount);
+ modal.classList.add('active');
+}
+
+function setupPaymentModal() {
+ var modal = document.getElementById('modal-payment');
+ var btnClose = document.getElementById('modal-payment-close');
+ var form = document.getElementById('form-payment');
+
+ if (btnClose && modal) {
+  btnClose.addEventListener('click', function() { modal.classList.remove('active'); });
+ }
+ if (modal) {
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('active'); });
+ }
+
+ if (form) {
+  form.addEventListener('submit', function(e) {
+   e.preventDefault();
+   var btn = form.querySelector('button[type="submit"]');
+   var originalText = btn ? btn.textContent : 'Payer';
+   if (btn) { btn.disabled = true; btn.textContent = 'Traitement...'; }
+
+   var orderId = document.getElementById('pay-order-id').value;
+   var method = document.getElementById('pay-method').value;
+   var phone = document.getElementById('pay-phone').value.trim();
+
+   apiFetch('/api/v1/payments/init', {
+    method: 'POST',
+    body: JSON.stringify({ order_id: parseInt(orderId), method: method, phone: phone })
+   })
+   .then(function(res) { return res.json(); })
+   .then(function(data) {
+    if (data.ok) {
+     showToast('Paiement initie. ' + data.instructions, 'success');
+     // Afficher les instructions
+     var instrEl = document.getElementById('pay-instructions');
+     if (instrEl) {
+      instrEl.textContent = data.instructions;
+      instrEl.style.display = 'block';
+     }
+     // Bouton confirmer
+     var confirmBtn = document.getElementById('btn-confirm-payment');
+     if (confirmBtn) {
+      confirmBtn.style.display = '';
+      confirmBtn.onclick = function() {
+       confirmPayment(data.payment_id, data.transaction_id);
+      };
+     }
+    } else {
+     showToast(data.detail || 'Erreur paiement', 'error');
+    }
+   })
+   .catch(function(e) {
+    showToast('Erreur reseau: ' + e.message, 'error');
+   })
+   .finally(function() {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+   });
+  });
+ }
+}
+
+function confirmPayment(paymentId, txId) {
+ apiFetch('/api/v1/payments/confirm', {
+  method: 'POST',
+  body: JSON.stringify({ payment_id: paymentId, transaction_id: txId })
+ })
+ .then(function(res) { return res.json(); })
+ .then(function(data) {
+  if (data.ok) {
+   showToast('Paiement confirme avec succes !', 'success');
+   var modal = document.getElementById('modal-payment');
+   if (modal) modal.classList.remove('active');
+   loadOrders();
+   loadOverviewStats();
+  } else {
+   showToast(data.detail || 'Erreur confirmation', 'error');
+  }
+ })
+ .catch(function(e) {
+  showToast('Erreur: ' + e.message, 'error');
+ });
+}
+
+/* ---------- EXPORT CSV (NOUVEAU v1.5.0) ---------- */
+
+function exportCSV(type) {
+ var token = localStorage.getItem('c509_jwt');
+ var url = API_URL + '/api/v1/export/' + type;
+ var filename = type + '_' + new Date().toISOString().slice(0,10) + '.csv';
+
+ fetch(url, {
+  method: 'GET',
+  headers: { 'Authorization': 'Bearer ' + token }
+ })
+ .then(function(res) {
+  if (!res.ok) throw new Error('Erreur export: ' + res.status);
+  return res.blob();
+ })
+ .then(function(blob) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+  showToast('Export ' + type + ' telecharge !', 'success');
+ })
+ .catch(function(e) {
+  showToast('Erreur export: ' + e.message, 'error');
+ });
+}
+
+function setupExportButtons() {
+ var btns = document.querySelectorAll('[data-export]');
+ btns.forEach(function(btn) {
+  btn.addEventListener('click', function() {
+   var type = btn.dataset.export;
+   if (type) exportCSV(type);
+  });
+ });
+}
+
 
 /* ---------- INIT ---------- */
 
