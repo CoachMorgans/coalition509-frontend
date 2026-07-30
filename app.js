@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.5.5 (Fix Bot Chart + Campaign detail route)
+ Version: 1.5.7 (Fix Bot Stats + Chart + Campaign modal)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -433,12 +433,7 @@ function loadBotStats() {
   }).then(function(data){
     renderBotStats(data.latest, data.week);
     renderBotWeekStats(data.week);
-    return apiFetch('/api/bot/stats/history?days=7');
-  }).then(function(res){
-    if (!res.ok) throw new Error('Erreur historique bot: ' + res.status);
-    return res.json();
-  }).then(function(history){
-    renderBotChart(history);
+    renderBotChart(data.week);
     console.log('[BOT STATS] Tout charge');
   }).catch(function(e){
     console.error('[BOT STATS] ERREUR:', e.message);
@@ -448,47 +443,52 @@ function loadBotStats() {
 }
 
 function renderBotStats(latest, week) {
-  week = week || {}; latest = latest || {};
+  week = week || []; latest = latest || {};
   var idMap = {
-    'bot-conversations': latest.total_conversations || 0,
-    'bot-active': latest.active_conversations || 0,
-    'bot-leads': latest.leads_generated || 0,
+    'bot-conversations': latest.conversations || 0,
+    'bot-active': latest.conversations || 0,
+    'bot-leads': latest.leads || 0,
     'bot-conversions': latest.conversions || 0,
-    'bot-messages': latest.messages_sent || 0
+    'bot-messages': latest.messages || 0
   };
   for (var id in idMap) { var el = document.getElementById(id); if (el) el.textContent = formatNumber(idMap[id]); }
   var verEl = document.getElementById("bot-version");
   if (verEl && latest.bot_version) verEl.textContent = 'v' + latest.bot_version;
   var tsEl = document.getElementById("bot-last-update");
-  if (tsEl && latest.recorded_at) tsEl.textContent = new Date(latest.recorded_at).toLocaleTimeString("fr-FR");
+  if (tsEl && latest.date) tsEl.textContent = new Date(latest.date).toLocaleTimeString("fr-FR");
 }
 
 function renderBotWeekStats(week) {
   var el = document.getElementById("bot-week-summary");
   if (!el) return;
+  var arr = Array.isArray(week) ? week : [];
+  var sumLeads = 0, sumConversions = 0, sumMessages = 0;
+  arr.forEach(function(d){
+    sumLeads += (d.leads || 0);
+    sumConversions += (d.conversions || 0);
+    sumMessages += (d.messages || 0);
+  });
   el.innerHTML =
-    '<div class="bot-week-item"><strong>' + formatNumber(week.leads || 0) + '</strong><span>Leads (7j)</span></div>' +
-    '<div class="bot-week-item"><strong>' + formatNumber(week.conversions || 0) + '</strong><span>Conversions (7j)</span></div>' +
-    '<div class="bot-week-item"><strong>' + formatNumber(week.messages || 0) + '</strong><span>Messages (7j)</span></div>';
+    '<div class="bot-week-item"><strong>' + formatNumber(sumLeads) + '</strong><span>Leads (7j)</span></div>' +
+    '<div class="bot-week-item"><strong>' + formatNumber(sumConversions) + '</strong><span>Conversions (7j)</span></div>' +
+    '<div class="bot-week-item"><strong>' + formatNumber(sumMessages) + '</strong><span>Messages (7j)</span></div>';
 }
 
-function renderBotChart(history) {
+function renderBotChart(weekData) {
   var canvas = document.getElementById("bot-stats-chart");
   if (!canvas || typeof Chart === 'undefined') return;
 
-  // Agréger par date pour eviter les labels dupliques
-  var aggregated = {};
-  history.forEach(function(h){
-    var dk = h.date;
-    if (!aggregated[dk]) aggregated[dk] = { conversations: 0, leads: 0, messages: 0 };
-    aggregated[dk].conversations += (h.conversations || 0);
-    aggregated[dk].leads += (h.leads || 0);
-    aggregated[dk].messages += (h.messages || 0);
-  });
-  var dates = Object.keys(aggregated).sort();
+  var arr = Array.isArray(weekData) ? weekData : [];
+  var dates = arr.map(function(d){ return d.date; }).sort();
   var labels = dates.map(function(d){ return new Date(d).toLocaleDateString("fr-FR", {weekday:"short", day:"numeric", month:"short"}); });
-  var conversations = dates.map(function(d){ return aggregated[d].conversations; });
-  var leads = dates.map(function(d){ return aggregated[d].leads; });
+  var conversations = dates.map(function(d){ 
+    var item = arr.find(function(x){ return x.date === d; });
+    return item ? (item.conversations || 0) : 0;
+  });
+  var leads = dates.map(function(d){ 
+    var item = arr.find(function(x){ return x.date === d; });
+    return item ? (item.leads || 0) : 0;
+  });
 
   safeChartCreate("bot-stats-chart", {
     type: "line",
@@ -583,10 +583,11 @@ function setupCampaignFilters() {
 function canManageCampaigns() { var user = getCurrentUser(); return user && ['superadmin','admin','manager'].indexOf(user.role) !== -1; }
 
 function viewCampaign(id) {
-  apiFetch('/api/v1/campaigns?id=' + id).then(function(res){
+  apiFetch('/api/campaigns/detail?id=' + id).then(function(res){
     if (!res.ok) throw new Error('Erreur chargement campagne');
     return res.json();
   }).then(function(c){
+    var campaign = c.campaign || c;
     var modalId = 'modal-campaign-detail';
     var existing = document.getElementById(modalId);
     if (existing) existing.remove();
@@ -594,18 +595,18 @@ function viewCampaign(id) {
     modal.id = modalId; modal.className = 'modal active';
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
     modal.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:560px;width:90%;max-height:90vh;overflow-y:auto;padding:28px;position:relative;">' +
-      '<button onclick="this.closest(\'.modal\').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;">&times;</button>' +
-      '<h2 style="margin:0 0 18px 0;font-size:20px;color:#1a1a2e;">' + escapeHtml(c.name) + '</h2>' +
+      '<button onclick="this.closest('.modal').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;">&times;</button>' +
+      '<h2 style="margin:0 0 18px 0;font-size:20px;color:#1a1a2e;">' + escapeHtml(campaign.name) + '</h2>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">' +
-      '<div><small style="color:#888;">Type</small><div style="font-weight:600;">' + (c.election_type || '—') + '</div></div>' +
-      '<div><small style="color:#888;">Statut</small><div style="font-weight:600;">' + (c.status || '—') + '</div></div>' +
-      '<div><small style="color:#888;">Region</small><div style="font-weight:600;">' + escapeHtml(c.region || '—') + '</div></div>' +
-      '<div><small style="color:#888;">Commune</small><div style="font-weight:600;">' + escapeHtml(c.commune || '—') + '</div></div>' +
-      '<div><small style="color:#888;">Date election</small><div style="font-weight:600;">' + formatDate(c.election_date) + '</div></div>' +
-      '<div><small style="color:#888;">Prix HT</small><div style="font-weight:600;color:#27ae60;">' + formatFCFA(c.price_ht || c.price_total || 0) + '</div></div>' +
+      '<div><small style="color:#888;">Type</small><div style="font-weight:600;">' + (campaign.election_type || '—') + '</div></div>' +
+      '<div><small style="color:#888;">Statut</small><div style="font-weight:600;">' + (campaign.status || '—') + '</div></div>' +
+      '<div><small style="color:#888;">Region</small><div style="font-weight:600;">' + escapeHtml(campaign.region || '—') + '</div></div>' +
+      '<div><small style="color:#888;">Commune</small><div style="font-weight:600;">' + escapeHtml(campaign.commune || '—') + '</div></div>' +
+      '<div><small style="color:#888;">Date election</small><div style="font-weight:600;">' + formatDate(campaign.election_date) + '</div></div>' +
+      '<div><small style="color:#888;">Prix HT</small><div style="font-weight:600;color:#27ae60;">' + formatFCFA(campaign.price_ht || campaign.price_total || 0) + '</div></div>' +
       '</div>' +
-      '<div style="margin-bottom:18px;"><small style="color:#888;">Description</small><div style="margin-top:4px;">' + escapeHtml(c.description || 'Aucune description') + '</div></div>' +
-      '<div style="text-align:right;"><button onclick="this.closest(\'.modal\').remove()" style="padding:10px 22px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;cursor:pointer;">Fermer</button></div>' +
+      '<div style="margin-bottom:18px;"><small style="color:#888;">Description</small><div style="margin-top:4px;">' + escapeHtml(campaign.description || 'Aucune description') + '</div></div>' +
+      '<div style="text-align:right;"><button onclick="this.closest('.modal').remove()" style="padding:10px 22px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;cursor:pointer;">Fermer</button></div>' +
       '</div>';
     document.body.appendChild(modal);
     modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
@@ -614,24 +615,25 @@ function viewCampaign(id) {
 
 function editCampaign(id) {
   if (!canManageCampaigns()) { showToast('Permission insuffisante.', 'error'); return; }
-  apiFetch('/api/v1/campaigns?id=' + id).then(function(res){
+  apiFetch('/api/campaigns/detail?id=' + id).then(function(res){
     if (!res.ok) throw new Error('Erreur chargement campagne');
     return res.json();
   }).then(function(c){
+    var campaign = c.campaign || c;
     var modal = document.getElementById('modal-campaign');
     if (!modal) { showToast('Modal non trouve.', 'error'); return; }
     var form = document.getElementById('form-campaign');
     if (!form) { showToast('Formulaire non trouve.', 'error'); return; }
-    document.getElementById('camp-name').value = c.name || '';
+    document.getElementById('camp-name').value = campaign.name || '';
     var typeSel = document.getElementById('camp-type');
-    if (typeSel) typeSel.value = c.election_type || '';
-    document.getElementById('camp-region').value = c.region || '';
-    document.getElementById('camp-commune').value = c.commune || '';
-    document.getElementById('camp-date').value = c.election_date || '';
-    document.getElementById('camp-desc').value = c.description || '';
-    document.getElementById('camp-price').value = c.price_ht || c.price_total || 0;
+    if (typeSel) typeSel.value = campaign.election_type || '';
+    document.getElementById('camp-region').value = campaign.region || '';
+    document.getElementById('camp-commune').value = campaign.commune || '';
+    document.getElementById('camp-date').value = campaign.election_date || '';
+    document.getElementById('camp-desc').value = campaign.description || '';
+    document.getElementById('camp-price').value = campaign.price_ht || campaign.price_total || 0;
     var pricingSel = document.getElementById('camp-pricing');
-    if (pricingSel) pricingSel.value = c.pricing_model || 'forfait';
+    if (pricingSel) pricingSel.value = campaign.pricing_model || 'forfait';
     var titleEl = modal.querySelector('.modal-title, h2, h3');
     if (titleEl) titleEl.textContent = 'Modifier la campagne';
     var submitBtn = form.querySelector('button[type="submit"]');
