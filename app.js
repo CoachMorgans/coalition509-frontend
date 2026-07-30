@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.5.4 (Fix Bot Stats + Chart + Campaign modal)
+ Version: 1.5.5 (Fix Bot Chart + Campaign detail route)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -433,7 +433,12 @@ function loadBotStats() {
   }).then(function(data){
     renderBotStats(data.latest, data.week);
     renderBotWeekStats(data.week);
-    renderBotChart(data.week);
+    return apiFetch('/api/bot/stats/history?days=7');
+  }).then(function(res){
+    if (!res.ok) throw new Error('Erreur historique bot: ' + res.status);
+    return res.json();
+  }).then(function(history){
+    renderBotChart(history);
     console.log('[BOT STATS] Tout charge');
   }).catch(function(e){
     console.error('[BOT STATS] ERREUR:', e.message);
@@ -443,35 +448,28 @@ function loadBotStats() {
 }
 
 function renderBotStats(latest, week) {
-  week = week || []; latest = latest || {};
+  week = week || {}; latest = latest || {};
   var idMap = {
-    'bot-conversations': latest.conversations || 0,
-    'bot-active': latest.conversations || 0,
-    'bot-leads': latest.leads || 0,
+    'bot-conversations': latest.total_conversations || 0,
+    'bot-active': latest.active_conversations || 0,
+    'bot-leads': latest.leads_generated || 0,
     'bot-conversions': latest.conversions || 0,
-    'bot-messages': latest.messages || 0
+    'bot-messages': latest.messages_sent || 0
   };
   for (var id in idMap) { var el = document.getElementById(id); if (el) el.textContent = formatNumber(idMap[id]); }
   var verEl = document.getElementById("bot-version");
   if (verEl && latest.bot_version) verEl.textContent = 'v' + latest.bot_version;
   var tsEl = document.getElementById("bot-last-update");
-  if (tsEl && latest.date) tsEl.textContent = new Date(latest.date).toLocaleTimeString("fr-FR");
+  if (tsEl && latest.recorded_at) tsEl.textContent = new Date(latest.recorded_at).toLocaleTimeString("fr-FR");
 }
 
 function renderBotWeekStats(week) {
   var el = document.getElementById("bot-week-summary");
   if (!el) return;
-  var arr = Array.isArray(week) ? week : [];
-  var sumLeads = 0, sumConversions = 0, sumMessages = 0;
-  arr.forEach(function(d){
-    sumLeads += (d.leads || 0);
-    sumConversions += (d.conversions || 0);
-    sumMessages += (d.messages || 0);
-  });
   el.innerHTML =
-    '<div class="bot-week-item"><strong>' + formatNumber(sumLeads) + '</strong><span>Leads (7j)</span></div>' +
-    '<div class="bot-week-item"><strong>' + formatNumber(sumConversions) + '</strong><span>Conversions (7j)</span></div>' +
-    '<div class="bot-week-item"><strong>' + formatNumber(sumMessages) + '</strong><span>Messages (7j)</span></div>';
+    '<div class="bot-week-item"><strong>' + formatNumber(week.leads || 0) + '</strong><span>Leads (7j)</span></div>' +
+    '<div class="bot-week-item"><strong>' + formatNumber(week.conversions || 0) + '</strong><span>Conversions (7j)</span></div>' +
+    '<div class="bot-week-item"><strong>' + formatNumber(week.messages || 0) + '</strong><span>Messages (7j)</span></div>';
 }
 
 function renderBotChart(history) {
@@ -620,21 +618,20 @@ function editCampaign(id) {
     if (!res.ok) throw new Error('Erreur chargement campagne');
     return res.json();
   }).then(function(c){
-    var campaign = c.campaign || c;
     var modal = document.getElementById('modal-campaign');
     if (!modal) { showToast('Modal non trouve.', 'error'); return; }
     var form = document.getElementById('form-campaign');
     if (!form) { showToast('Formulaire non trouve.', 'error'); return; }
-    document.getElementById('camp-name').value = campaign.name || '';
+    document.getElementById('camp-name').value = c.name || '';
     var typeSel = document.getElementById('camp-type');
-    if (typeSel) typeSel.value = campaign.election_type || '';
-    document.getElementById('camp-region').value = campaign.region || '';
-    document.getElementById('camp-commune').value = campaign.commune || '';
-    document.getElementById('camp-date').value = campaign.election_date || '';
-    document.getElementById('camp-desc').value = campaign.description || '';
-    document.getElementById('camp-price').value = campaign.price_ht || campaign.price_total || 0;
+    if (typeSel) typeSel.value = c.election_type || '';
+    document.getElementById('camp-region').value = c.region || '';
+    document.getElementById('camp-commune').value = c.commune || '';
+    document.getElementById('camp-date').value = c.election_date || '';
+    document.getElementById('camp-desc').value = c.description || '';
+    document.getElementById('camp-price').value = c.price_ht || c.price_total || 0;
     var pricingSel = document.getElementById('camp-pricing');
-    if (pricingSel) pricingSel.value = campaign.pricing_model || 'forfait';
+    if (pricingSel) pricingSel.value = c.pricing_model || 'forfait';
     var titleEl = modal.querySelector('.modal-title, h2, h3');
     if (titleEl) titleEl.textContent = 'Modifier la campagne';
     var submitBtn = form.querySelector('button[type="submit"]');
