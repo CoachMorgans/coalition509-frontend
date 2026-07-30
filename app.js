@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.5.2 (Fix Orders + Bot Chart + Stats + Paiement)
+ Version: 1.5.3 (Fix Bot Stats mapping + Week aggregation)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -448,28 +448,37 @@ function loadBotStats() {
 }
 
 function renderBotStats(latest, week) {
-  week = week || {}; latest = latest || {};
+  week = week || []; latest = latest || {};
+  // Mapping clés API v2.7.8 {latest: {leads, conversations, messages, conversions, date}}
   var idMap = {
-    'bot-conversations': latest.total_conversations || 0,
-    'bot-active': latest.active_conversations || 0,
-    'bot-leads': latest.leads_generated || 0,
+    'bot-conversations': latest.conversations || 0,
+    'bot-active': latest.conversations || 0,
+    'bot-leads': latest.leads || 0,
     'bot-conversions': latest.conversions || 0,
-    'bot-messages': latest.messages_sent || 0
+    'bot-messages': latest.messages || 0
   };
   for (var id in idMap) { var el = document.getElementById(id); if (el) el.textContent = formatNumber(idMap[id]); }
   var verEl = document.getElementById("bot-version");
   if (verEl && latest.bot_version) verEl.textContent = 'v' + latest.bot_version;
   var tsEl = document.getElementById("bot-last-update");
-  if (tsEl && latest.recorded_at) tsEl.textContent = new Date(latest.recorded_at).toLocaleTimeString("fr-FR");
+  if (tsEl && latest.date) tsEl.textContent = new Date(latest.date).toLocaleTimeString("fr-FR");
 }
 
 function renderBotWeekStats(week) {
   var el = document.getElementById("bot-week-summary");
   if (!el) return;
+  // week est un tableau [{date, leads, conversations, messages, conversions}, ...]
+  var arr = Array.isArray(week) ? week : [];
+  var sumLeads = 0, sumConversions = 0, sumMessages = 0;
+  arr.forEach(function(d){
+    sumLeads += (d.leads || 0);
+    sumConversions += (d.conversions || 0);
+    sumMessages += (d.messages || 0);
+  });
   el.innerHTML =
-    '<div class="bot-week-item"><strong>' + formatNumber(week.leads || 0) + '</strong><span>Leads (7j)</span></div>' +
-    '<div class="bot-week-item"><strong>' + formatNumber(week.conversions || 0) + '</strong><span>Conversions (7j)</span></div>' +
-    '<div class="bot-week-item"><strong>' + formatNumber(week.messages || 0) + '</strong><span>Messages (7j)</span></div>';
+    '<div class="bot-week-item"><strong>' + formatNumber(sumLeads) + '</strong><span>Leads (7j)</span></div>' +
+    '<div class="bot-week-item"><strong>' + formatNumber(sumConversions) + '</strong><span>Conversions (7j)</span></div>' +
+    '<div class="bot-week-item"><strong>' + formatNumber(sumMessages) + '</strong><span>Messages (7j)</span></div>';
 }
 
 function renderBotChart(history) {
