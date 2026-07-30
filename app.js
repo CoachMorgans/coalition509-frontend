@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.5.3 (Fix Bot Stats mapping + Week aggregation)
+ Version: 1.5.4 (Fix Bot Stats + Chart + Campaign modal)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -433,12 +433,7 @@ function loadBotStats() {
   }).then(function(data){
     renderBotStats(data.latest, data.week);
     renderBotWeekStats(data.week);
-    return apiFetch('/api/bot/stats/history?days=7');
-  }).then(function(res){
-    if (!res.ok) throw new Error('Erreur historique bot: ' + res.status);
-    return res.json();
-  }).then(function(history){
-    renderBotChart(history);
+    renderBotChart(data.week);
     console.log('[BOT STATS] Tout charge');
   }).catch(function(e){
     console.error('[BOT STATS] ERREUR:', e.message);
@@ -449,7 +444,6 @@ function loadBotStats() {
 
 function renderBotStats(latest, week) {
   week = week || []; latest = latest || {};
-  // Mapping clés API v2.7.8 {latest: {leads, conversations, messages, conversions, date}}
   var idMap = {
     'bot-conversations': latest.conversations || 0,
     'bot-active': latest.conversations || 0,
@@ -467,7 +461,6 @@ function renderBotStats(latest, week) {
 function renderBotWeekStats(week) {
   var el = document.getElementById("bot-week-summary");
   if (!el) return;
-  // week est un tableau [{date, leads, conversations, messages, conversions}, ...]
   var arr = Array.isArray(week) ? week : [];
   var sumLeads = 0, sumConversions = 0, sumMessages = 0;
   arr.forEach(function(d){
@@ -627,20 +620,21 @@ function editCampaign(id) {
     if (!res.ok) throw new Error('Erreur chargement campagne');
     return res.json();
   }).then(function(c){
+    var campaign = c.campaign || c;
     var modal = document.getElementById('modal-campaign');
     if (!modal) { showToast('Modal non trouve.', 'error'); return; }
     var form = document.getElementById('form-campaign');
     if (!form) { showToast('Formulaire non trouve.', 'error'); return; }
-    document.getElementById('camp-name').value = c.name || '';
+    document.getElementById('camp-name').value = campaign.name || '';
     var typeSel = document.getElementById('camp-type');
-    if (typeSel) typeSel.value = c.election_type || '';
-    document.getElementById('camp-region').value = c.region || '';
-    document.getElementById('camp-commune').value = c.commune || '';
-    document.getElementById('camp-date').value = c.election_date || '';
-    document.getElementById('camp-desc').value = c.description || '';
-    document.getElementById('camp-price').value = c.price_ht || c.price_total || 0;
+    if (typeSel) typeSel.value = campaign.election_type || '';
+    document.getElementById('camp-region').value = campaign.region || '';
+    document.getElementById('camp-commune').value = campaign.commune || '';
+    document.getElementById('camp-date').value = campaign.election_date || '';
+    document.getElementById('camp-desc').value = campaign.description || '';
+    document.getElementById('camp-price').value = campaign.price_ht || campaign.price_total || 0;
     var pricingSel = document.getElementById('camp-pricing');
-    if (pricingSel) pricingSel.value = c.pricing_model || 'forfait';
+    if (pricingSel) pricingSel.value = campaign.pricing_model || 'forfait';
     var titleEl = modal.querySelector('.modal-title, h2, h3');
     if (titleEl) titleEl.textContent = 'Modifier la campagne';
     var submitBtn = form.querySelector('button[type="submit"]');
