@@ -1,7 +1,7 @@
 /* ============================================================
  Coalition 509 — Frontend SaaS
  VoteConnect Ecosystem | ChallengeFinancier
- Version: 1.5.7 (Fix Bot Stats + Chart + Campaign modal)
+ Version: 1.5.8 (Fix Bot Stats mapping + Chart + Campaign detail)
  ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -474,21 +474,23 @@ function renderBotWeekStats(week) {
     '<div class="bot-week-item"><strong>' + formatNumber(sumMessages) + '</strong><span>Messages (7j)</span></div>';
 }
 
-function renderBotChart(weekData) {
+function renderBotChart(history) {
   var canvas = document.getElementById("bot-stats-chart");
   if (!canvas || typeof Chart === 'undefined') return;
 
-  var arr = Array.isArray(weekData) ? weekData : [];
-  var dates = arr.map(function(d){ return d.date; }).sort();
+  // Agréger par date pour eviter les labels dupliques
+  var aggregated = {};
+  history.forEach(function(h){
+    var dk = h.date;
+    if (!aggregated[dk]) aggregated[dk] = { conversations: 0, leads: 0, messages: 0 };
+    aggregated[dk].conversations += (h.conversations || 0);
+    aggregated[dk].leads += (h.leads || 0);
+    aggregated[dk].messages += (h.messages || 0);
+  });
+  var dates = Object.keys(aggregated).sort();
   var labels = dates.map(function(d){ return new Date(d).toLocaleDateString("fr-FR", {weekday:"short", day:"numeric", month:"short"}); });
-  var conversations = dates.map(function(d){ 
-    var item = arr.find(function(x){ return x.date === d; });
-    return item ? (item.conversations || 0) : 0;
-  });
-  var leads = dates.map(function(d){ 
-    var item = arr.find(function(x){ return x.date === d; });
-    return item ? (item.leads || 0) : 0;
-  });
+  var conversations = dates.map(function(d){ return aggregated[d].conversations; });
+  var leads = dates.map(function(d){ return aggregated[d].leads; });
 
   safeChartCreate("bot-stats-chart", {
     type: "line",
@@ -595,7 +597,7 @@ function viewCampaign(id) {
     modal.id = modalId; modal.className = 'modal active';
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
     modal.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:560px;width:90%;max-height:90vh;overflow-y:auto;padding:28px;position:relative;">' +
-      '<button onclick="this.closest('.modal').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;">&times;</button>' +
+      '<button onclick="this.closest(\'.modal\').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;">&times;</button>' +
       '<h2 style="margin:0 0 18px 0;font-size:20px;color:#1a1a2e;">' + escapeHtml(campaign.name) + '</h2>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">' +
       '<div><small style="color:#888;">Type</small><div style="font-weight:600;">' + (campaign.election_type || '—') + '</div></div>' +
@@ -606,7 +608,7 @@ function viewCampaign(id) {
       '<div><small style="color:#888;">Prix HT</small><div style="font-weight:600;color:#27ae60;">' + formatFCFA(campaign.price_ht || campaign.price_total || 0) + '</div></div>' +
       '</div>' +
       '<div style="margin-bottom:18px;"><small style="color:#888;">Description</small><div style="margin-top:4px;">' + escapeHtml(campaign.description || 'Aucune description') + '</div></div>' +
-      '<div style="text-align:right;"><button onclick="this.closest('.modal').remove()" style="padding:10px 22px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;cursor:pointer;">Fermer</button></div>' +
+      '<div style="text-align:right;"><button onclick="this.closest(\'.modal\').remove()" style="padding:10px 22px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;cursor:pointer;">Fermer</button></div>' +
       '</div>';
     document.body.appendChild(modal);
     modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
