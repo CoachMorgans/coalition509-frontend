@@ -3,452 +3,529 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Coalition 509 — Dashboard</title>
+  <title>Coalition 509 — Tableau de bord</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
-<body>
+<body class="dashboard-body">
+
+  <!-- ========== MOBILE HEADER ========== -->
+  <header class="mobile-header">
+    <button class="menu-toggle" id="mobile-menu-toggle" aria-label="Menu">☰</button>
+    <div class="mobile-brand">
+      <h1>Coalition <span>509</span></h1>
+    </div>
+    <div class="user-avatar" id="mobile-avatar">U</div>
+  </header>
 
   <!-- ========== SIDEBAR ========== -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <h1>Coalition 509</h1>
-      <p class="subtitle">VoteConnect Ecosystem | ChallengeFinancier™</p>
+      <h2>Coalition <span>509</span></h2>
+      <p>VoteConnect Ecosystem | ChallengeFinancier™</p>
     </div>
     <nav class="sidebar-nav">
-      <a href="#" class="nav-item active" id="nav-dashboard">
-        <span class="nav-ico">📊</span> Vue d'ensemble
+      <a class="nav-item active" data-section="overview" href="#">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Vue d'ensemble</span>
       </a>
-      <a href="#" class="nav-item" id="nav-campaigns">
-        <span class="nav-ico">📢</span> Campagnes
+      <a class="nav-item" data-section="campaigns" href="#">
+        <span class="nav-icon">📢</span>
+        <span class="nav-label">Campagnes</span>
       </a>
-      <a href="#" class="nav-item" id="nav-users">
-        <span class="nav-ico">👥</span> Utilisateurs
+      <a class="nav-item" data-section="users" href="#" id="nav-users" style="display:none;">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">Utilisateurs</span>
       </a>
-      <a href="#" class="nav-item" id="nav-orders">
-        <span class="nav-ico">🔒</span> Commandes TCL
+      <a class="nav-item" data-section="orders" href="#" id="nav-orders" style="display:none;">
+        <span class="nav-icon">🔒</span>
+        <span class="nav-label">Commandes TCL</span>
       </a>
-      <a href="#" class="nav-item" id="nav-profile">
-        <span class="nav-ico">👤</span> Mon Profil
+      <a class="nav-item" data-section="profile" href="#">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Mon Profil</span>
       </a>
     </nav>
     <div class="sidebar-footer">
-      <div class="user-card">
+      <div class="user-mini">
         <div class="user-avatar" id="sidebar-avatar">U</div>
         <div class="user-info">
-          <div class="user-name" id="sidebar-name">Utilisateur</div>
-          <div class="user-role" id="sidebar-role">Membre</div>
+          <div class="name" id="sidebar-name">—</div>
+          <div class="role" id="sidebar-role">—</div>
         </div>
       </div>
-      <button class="btn-logout" id="btn-logout-sidebar">
-        <span>🚪</span> Déconnexion
-      </button>
+      <button class="btn btn-danger" id="logout-btn" style="width:100%;margin-top:12px;font-size:13px;">⏻ Déconnexion</button>
     </div>
   </aside>
 
-  <!-- ========== OVERLAY MOBILE ========== -->
-  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileMenu()"></div>
+  <!-- Sidebar overlay for mobile -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-  <!-- ========== MAIN ========== -->
-  <main class="main">
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="main-content" id="main-content">
 
-    <!-- Header -->
-    <header class="topbar">
-      <button class="menu-toggle" id="menu-toggle" aria-label="Menu">☰</button>
-      <div class="topbar-title">
-        <h2 id="page-title">Vue d'ensemble</h2>
-      </div>
+    <!-- Desktop topbar -->
+    <div class="topbar desktop-only">
+      <h1 id="page-title">📊 Vue d'ensemble</h1>
       <div class="topbar-actions">
-        <span class="api-status" id="api-status">● API Connectée</span>
-        <button class="btn-refresh" id="btn-refresh">🔄 Actualiser</button>
-        <button class="btn-logout-header" id="btn-logout">🔴 Déconnexion</button>
+        <span class="badge badge-success" id="api-status" style="margin-right:8px;">● API CONNECTEE</span>
+        <button class="btn btn-sm btn-secondary" id="refresh-btn">🔄 Actualiser</button>
+        <button class="btn btn-sm btn-danger" id="logout-btn-desktop">🚪 Déconnexion</button>
       </div>
-    </header>
+    </div>
 
-    <!-- ========== SECTION : DASHBOARD ========== -->
-    <section class="section" id="dashboard-section">
-      <div class="stats-grid">
+    <!-- ===== SECTION: OVERVIEW ===== -->
+    <section class="section active" id="section-overview">
+      <div class="stats-grid" id="overview-stats">
         <div class="stat-card">
-          <div class="stat-icon">👥</div>
-          <div class="stat-value" id="stat-users">0</div>
-          <div class="stat-label">Utilisateurs</div>
+          <div class="stat-icon" style="background: linear-gradient(135deg, #D4AF37, #228B22);">👥</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-users">0</div>
+            <div class="stat-label">Membres NGD</div>
+          </div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">📢</div>
-          <div class="stat-value" id="stat-campaigns">0</div>
-          <div class="stat-label">Campagnes</div>
+          <div class="stat-icon" style="background: linear-gradient(135deg, #228B22, #0d1f0d);">📢</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-campaigns">0</div>
+            <div class="stat-label">Campagnes</div>
+          </div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">🛒</div>
-          <div class="stat-value" id="stat-orders">0</div>
-          <div class="stat-label">Commandes TCL</div>
+          <div class="stat-icon" style="background: linear-gradient(135deg, #D4AF37, #b8860b);">🛒</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-orders">0</div>
+            <div class="stat-label">Commandes TCL</div>
+          </div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">💰</div>
-          <div class="stat-value" id="stat-revenue">0 FCFA</div>
-          <div class="stat-label">Revenus payés</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">👥</div>
-          <div class="stat-value" id="stat-groups">0</div>
-          <div class="stat-label">Groupes actifs</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">⏳</div>
-          <div class="stat-value" id="stat-pending">0</div>
-          <div class="stat-label">Retraits en attente</div>
+          <div class="stat-icon" style="background: linear-gradient(135deg, #228B22, #D4AF37);">💰</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-revenue">0 FCFA</div>
+            <div class="stat-label">Chiffre d'affaires</div>
+          </div>
         </div>
       </div>
 
-      <!-- Stats Bot -->
-      <div class="card bot-stats-card">
+      <!-- BOT STATS -->
+      <div class="card mt-20">
         <div class="card-header">
-          <h3>🤖 Stats Bot <span class="badge-version">v1.2.0</span></h3>
-          <span class="last-update" id="bot-last-update">—</span>
+          <h3>🤖 Stats Bot <span class="badge badge-info" id="bot-version">v1.2.0</span></h3>
+          <small style="color:#888;">Dernière mise à jour : <span id="bot-last-update">—</span></small>
         </div>
-        <div class="bot-stats-grid">
-          <div class="bot-stat">
-            <div class="bot-stat-icon">💬</div>
-            <div class="bot-stat-value" id="bot-conversations">0</div>
-            <div class="bot-stat-label">Conversations</div>
+        <div class="card-body">
+          <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#3b82f6;">💬</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-conversations">0</div>
+                <div class="stat-label">Conversations</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f59e0b;">⚡</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-active">0</div>
+                <div class="stat-label">Actives</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#10b981;">🎯</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-leads">0</div>
+                <div class="stat-label">Leads</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#8b5cf6;">✅</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-conversions">0</div>
+                <div class="stat-label">Conversions</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#ec4899;">📩</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-messages">0</div>
+                <div class="stat-label">Messages</div>
+              </div>
+            </div>
           </div>
-          <div class="bot-stat">
-            <div class="bot-stat-icon">⚡</div>
-            <div class="bot-stat-value" id="bot-active">0</div>
-            <div class="bot-stat-label">Actives</div>
+          <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:20px;">
+            <div class="stat-card" style="justify-content:center;">
+              <div class="stat-info" style="text-align:center;">
+                <div class="stat-value" id="bot-week-leads" style="font-size:20px;">0</div>
+                <div class="stat-label">Leads (7j)</div>
+              </div>
+            </div>
+            <div class="stat-card" style="justify-content:center;">
+              <div class="stat-info" style="text-align:center;">
+                <div class="stat-value" id="bot-week-conversions" style="font-size:20px;">0</div>
+                <div class="stat-label">Conversions (7j)</div>
+              </div>
+            </div>
+            <div class="stat-card" style="justify-content:center;">
+              <div class="stat-info" style="text-align:center;">
+                <div class="stat-value" id="bot-week-messages" style="font-size:20px;">0</div>
+                <div class="stat-label">Messages (7j)</div>
+              </div>
+            </div>
           </div>
-          <div class="bot-stat">
-            <div class="bot-stat-icon">🎯</div>
-            <div class="bot-stat-value" id="bot-leads">0</div>
-            <div class="bot-stat-label">Leads</div>
+          <div style="height:240px;position:relative;">
+            <canvas id="bot-stats-chart"></canvas>
           </div>
-          <div class="bot-stat">
-            <div class="bot-stat-icon">✅</div>
-            <div class="bot-stat-value" id="bot-conversions">0</div>
-            <div class="bot-stat-label">Conversions</div>
-          </div>
-          <div class="bot-stat">
-            <div class="bot-stat-icon">📩</div>
-            <div class="bot-stat-value" id="bot-messages">0</div>
-            <div class="bot-stat-label">Messages</div>
-          </div>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="botChart"></canvas>
-        </div>
-        <div class="bot-week-grid">
-          <div class="bot-week-item">
-            <div class="bot-week-label">Leads (7j)</div>
-            <div class="bot-week-value" id="week-leads">0</div>
-          </div>
-          <div class="bot-week-item">
-            <div class="bot-week-label">Conversions (7j)</div>
-            <div class="bot-week-value" id="week-conversions">0</div>
-          </div>
-          <div class="bot-week-item">
-            <div class="bot-week-label">Messages (7j)</div>
-            <div class="bot-week-value" id="week-messages">0</div>
-          </div>
+          <div id="bot-stats-error" style="color:#e74c3c;font-size:12px;text-align:center;margin-top:8px;"></div>
         </div>
       </div>
 
-      <!-- Coalition Progression -->
-      <div class="card coalition-card">
-        <h3>🗳️ Coalition 509 — Progression</h3>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar" id="coalition-bar"></div>
+      <!-- Coalition Progress -->
+      <div class="card mt-20">
+        <div class="card-header">
+          <h3>🗳️ Coalition 509 — Progression</h3>
         </div>
-        <p class="progress-text" id="coalition-progress">0 / 232 groupes créés</p>
-      </div>
-    </section>
-
-    <!-- ========== SECTION : CAMPAGNES ========== -->
-    <section class="section hidden" id="campaigns-section">
-      <div class="section-header">
-        <h2>📢 Campagnes</h2>
-        <button class="btn-primary" id="btn-new-campaign">+ Nouvelle campagne</button>
-      </div>
-      <div class="csv-bar">
-        <button class="btn-csv" id="csv-campaigns">📥 CSV Campagnes</button>
-        <button class="btn-csv" id="csv-orders">📥 CSV Commandes</button>
-        <button class="btn-csv" id="csv-users">📥 CSV Utilisateurs</button>
-      </div>
-      <div class="filters">
-        <input type="text" placeholder="Rechercher..." id="camp-search">
-        <select id="camp-filter-status">
-          <option value="">Tous les statuts</option>
-          <option value="active">Active</option>
-          <option value="paused">En pause</option>
-          <option value="ended">Terminée</option>
-        </select>
-        <input type="text" placeholder="Région" id="camp-filter-region">
-        <button class="btn-filter" onclick="loadCampaigns()">Filtrer</button>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>NOM</th><th>TYPE</th><th>RÉGION</th><th>DATE</th><th>STATUT</th><th>PRIX</th><th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody id="campaigns-tbody">
-            <tr><td colspan="7" style="text-align:center;padding:2rem;color:#888;">Chargement...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ========== SECTION : UTILISATEURS ========== -->
-    <section class="section hidden" id="users-section">
-      <div class="section-header">
-        <h2>👥 Utilisateurs</h2>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>NOM</th><th>TÉLÉPHONE</th><th>EMAIL</th><th>RÉGION</th><th>RÔLE</th><th>DATE</th>
-            </tr>
-          </thead>
-          <tbody id="users-tbody">
-            <tr><td colspan="6" style="text-align:center;padding:2rem;color:#888;">Chargement...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ========== SECTION : COMMANDES TCL ========== -->
-    <section class="section hidden" id="orders-section">
-      <div class="section-header">
-        <h2>🛒 Commandes TCL</h2>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>N°</th><th>CLIENT</th><th>MONTANT</th><th>RÉGION</th><th>STATUT</th><th>PAIEMENT</th><th>DATE</th><th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody id="orders-tbody">
-            <tr><td colspan="8" style="text-align:center;padding:2rem;color:#888;">Chargement...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ========== SECTION : PROFIL ========== -->
-    <section class="section hidden" id="profile-section">
-      <div class="profile-layout">
-        <div class="profile-card info-card">
-          <h3>Informations</h3>
-          <div class="profile-avatar" id="profile-avatar">U</div>
-          <div class="profile-name" id="profile-name">—</div>
-          <div class="profile-role" id="profile-role">—</div>
-          <div class="profile-detail">
-            <span class="profile-label">🆔 ID NGD</span>
-            <span class="profile-value" id="profile-id">—</span>
+        <div class="card-body">
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="coalition-progress" style="width: 0%;"></div>
           </div>
-          <div class="profile-detail">
-            <span class="profile-label">📱 Téléphone</span>
-            <span class="profile-value" id="profile-phone">—</span>
-          </div>
-          <div class="profile-detail">
-            <span class="profile-label">📧 Email</span>
-            <span class="profile-value" id="profile-email">—</span>
-          </div>
-          <div class="profile-detail">
-            <span class="profile-label">📍 Région</span>
-            <span class="profile-value" id="profile-region">—</span>
-          </div>
-          <div class="profile-detail">
-            <span class="profile-label">🏘️ Commune</span>
-            <span class="profile-value" id="profile-commune">—</span>
-          </div>
-        </div>
-
-        <div class="profile-card edit-card">
-          <h3>✏️ Modifier mon profil</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Prénom</label>
-              <input type="text" id="edit-prenom" placeholder="Prénom">
-            </div>
-            <div class="form-group">
-              <label>Nom</label>
-              <input type="text" id="edit-nom" placeholder="Nom">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Téléphone</label>
-            <input type="tel" id="edit-telephone" placeholder="509XXXXXXXX">
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="edit-email" placeholder="email@exemple.com">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Région</label>
-              <input type="text" id="edit-region" placeholder="Région">
-            </div>
-            <div class="form-group">
-              <label>Commune</label>
-              <input type="text" id="edit-commune" placeholder="Commune">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Nouveau PIN (4 chiffres)</label>
-              <input type="password" id="edit-pin" placeholder="****" maxlength="4">
-            </div>
-            <div class="form-group">
-              <label>Confirmer le PIN</label>
-              <input type="password" id="edit-pin-confirm" placeholder="****" maxlength="4">
-            </div>
-          </div>
-          <button class="btn-primary" id="btn-save-profile">💾 Enregistrer</button>
+          <p class="progress-text" id="coalition-text">0 / 232 groupes créés</p>
         </div>
       </div>
     </section>
 
-    <!-- ========== MOBILE BOTTOM NAV ========== -->
-    <nav class="mobile-nav" id="mobile-nav">
-      <a href="#" class="mob-nav-item active" id="mob-nav-dashboard">
-        <span class="mob-nav-ico">📊</span>
-        <span class="mob-nav-label">Accueil</span>
-      </a>
-      <a href="#" class="mob-nav-item" id="mob-nav-campaigns">
-        <span class="mob-nav-ico">📢</span>
-        <span class="mob-nav-label">Campagnes</span>
-      </a>
-      <a href="#" class="mob-nav-item" id="mob-nav-profile">
-        <span class="mob-nav-ico">👤</span>
-        <span class="mob-nav-label">Profil</span>
-      </a>
-    </nav>
+    <!-- ===== SECTION: CAMPAIGNS ===== -->
+    <section class="section" id="section-campaigns">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>📢 Campagnes</h1>
+        <button class="btn btn-primary" id="btn-create-campaign">+ Nouvelle campagne</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-secondary" data-export="campaigns">📥 CSV Campagnes</button>
+        <button class="btn btn-sm btn-secondary" data-export="orders">📥 CSV Commandes</button>
+        <button class="btn btn-sm btn-secondary" data-export="users">📥 CSV Utilisateurs</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <input type="text" id="camp-filter-search" placeholder="Rechercher..." style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;flex:1;min-width:200px;">
+            <select id="camp-filter-status" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;background:#fff;">
+              <option value="">Tous les statuts</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <input type="text" id="camp-filter-region" placeholder="Région" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+            <button class="btn btn-primary" id="camp-filter-apply">Filtrer</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Type</th>
+                  <th>Région</th>
+                  <th>Date</th>
+                  <th>Statut</th>
+                  <th>Prix</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="campaigns-table-body">
+                <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="campaigns-pagination" style="margin-top:16px;"></div>
+        </div>
+      </div>
+    </section>
 
+    <!-- ===== SECTION: USERS ===== -->
+    <section class="section" id="section-users">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>👥 Utilisateurs</h1>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Téléphone</th>
+                  <th>Email</th>
+                  <th>Profil</th>
+                  <th>Région</th>
+                  <th>Statut</th>
+                  <th>Inscrit</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body">
+                <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SECTION: ORDERS ===== -->
+    <section class="section" id="section-orders">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>🛒 Commandes TCL</h1>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Client</th>
+                  <th>Montant</th>
+                  <th>Région</th>
+                  <th>Statut</th>
+                  <th>Paiement</th>
+                  <th>Date</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="orders-table-body">
+                <tr><td colspan="8" class="loading"><span class="spinner"></span> Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SECTION: PROFILE ===== -->
+    <section class="section" id="section-profile">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>👤 Mon Profil</h1>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card">
+          <div class="card-header">
+            <h3>Informations</h3>
+          </div>
+          <div class="card-body">
+            <div class="profile-body" style="padding:0;">
+              <div class="profile-avatar-large" id="profile-avatar">U</div>
+              <h2 id="profile-name">—</h2>
+              <p id="profile-role" class="profile-role">—</p>
+            </div>
+            <div class="profile-details">
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🆔 ID NGD</span>
+                <span class="profile-detail-value" id="prof-display-ngd">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">👤 Nom complet</span>
+                <span class="profile-detail-value" id="prof-display-name">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">📱 Téléphone</span>
+                <span class="profile-detail-value" id="prof-display-phone">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">📧 Email</span>
+                <span class="profile-detail-value" id="prof-display-email">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">📍 Région</span>
+                <span class="profile-detail-value" id="prof-display-region">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🏙️ Commune</span>
+                <span class="profile-detail-value" id="prof-display-commune">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🎭 Rôle</span>
+                <span class="profile-detail-value" id="prof-display-role">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🎯 Profil</span>
+                <span class="profile-detail-value" id="prof-display-profile">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>✏️ Modifier mon profil</h3>
+          </div>
+          <div class="card-body">
+            <form id="form-profile">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Prénom</label>
+                  <input type="text" id="prof-first-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Nom</label>
+                  <input type="text" id="prof-last-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Téléphone</label>
+                <input type="tel" id="prof-phone" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="prof-email" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Région</label>
+                  <input type="text" id="prof-region-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Commune</label>
+                  <input type="text" id="prof-commune-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+                </div>
+              </div>
+              <hr style="margin:16px 0;border:none;border-top:1px solid #e8eaed;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Nouveau PIN (4 chiffres)</label>
+                  <input type="password" id="prof-new-pin" maxlength="4" placeholder="Laisser vide" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Confirmer le PIN</label>
+                  <input type="password" id="prof-confirm-pin" maxlength="4" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+                </div>
+              </div>
+              <button type="submit" class="btn-submit">💾 Enregistrer les modifications</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
+  <!-- ========== BOTTOM NAV (Mobile) ========== -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <a class="bottom-nav-item active" data-section="overview" href="#">
+      <span class="bottom-nav-icon">📊</span>
+      <span class="bottom-nav-label">Accueil</span>
+    </a>
+    <a class="bottom-nav-item" data-section="campaigns" href="#">
+      <span class="bottom-nav-icon">📢</span>
+      <span class="bottom-nav-label">Campagnes</span>
+    </a>
+    <a class="bottom-nav-item" data-section="orders" href="#" id="bottom-nav-orders" style="display:none;">
+      <span class="bottom-nav-icon">🛒</span>
+      <span class="bottom-nav-label">Commandes</span>
+    </a>
+    <a class="bottom-nav-item" data-section="profile" href="#">
+      <span class="bottom-nav-icon">👤</span>
+      <span class="bottom-nav-label">Profil</span>
+    </a>
+  </nav>
+
+  <!-- ========== MODAL: Campaign ========== -->
+  <div class="modal-overlay" id="modal-campaign-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-campaign-title">Nouvelle campagne</h3>
+        <button class="modal-close" id="modal-campaign-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-campaign">
+          <div class="form-group">
+            <label>Nom de la campagne *</label>
+            <input type="text" id="camp-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Type d'élection *</label>
+              <select id="camp-type" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+                <option value="">Choisir...</option>
+                <option value="Presidentielle">Présidentielle</option>
+                <option value="Senatoriales">Sénatoriales</option>
+                <option value="Depute">Député</option>
+                <option value="Municipales">Municipales</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Date de l'élection</label>
+              <input type="date" id="camp-date" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Région *</label>
+              <input type="text" id="camp-region" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Commune</label>
+              <input type="text" id="camp-commune" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="camp-desc" rows="3" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;font-family:inherit;"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Prix HT (FCFA)</label>
+              <input type="number" id="camp-price" value="0" min="0" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Modèle de tarification</label>
+              <select id="camp-pricing" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+                <option value="forfait">Forfait</option>
+                <option value="abonnement">Abonnement</option>
+                <option value="commission">Commission</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding:0;border:none;">
+            <button type="button" class="btn btn-secondary" id="modal-campaign-cancel">Annuler</button>
+            <button type="submit" class="btn btn-primary">💾 Créer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL: Payment ========== -->
+  <div class="modal-overlay" id="modal-payment-overlay">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>💳 Paiement</h3>
+        <button class="modal-close" id="modal-payment-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-payment">
+          <input type="hidden" id="pay-order-id">
+          <div class="form-group">
+            <label>Montant</label>
+            <div id="pay-amount" style="font-size:20px;font-weight:700;color:#228B22;">0 FCFA</div>
+          </div>
+          <div class="form-group">
+            <label>Méthode de paiement</label>
+            <select id="pay-method" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+              <option value="wave">Wave</option>
+              <option value="moncash">MonCash (Digicel)</option>
+              <option value="natcash">NatCash (Natcom)</option>
+              <option value="paypal">PayPal</option>
+              <option value="stripe">Carte bancaire (Stripe)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Numéro de téléphone (pour Wave/MonCash/NatCash)</label>
+            <input type="tel" id="pay-phone" placeholder="Ex: 50912345678" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+          </div>
+          <div id="pay-instructions" style="display:none;padding:12px;background:#e8f5e9;border-radius:10px;margin-bottom:12px;font-size:13px;color:#2e7d32;"></div>
+          <button type="submit" class="btn-submit">🚀 Initier le paiement</button>
+          <button type="button" id="btn-confirm-payment" class="btn-submit" style="display:none;background:linear-gradient(135deg,#228B22,#0d1f0d);margin-top:8px;">✅ Confirmer le paiement</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== TOAST ========== -->
-  <div class="toast" id="toast"></div>
-
-  <!-- ========== MODAL : NOUVELLE CAMPAGNE ========== -->
-  <div class="modal-overlay hidden" id="modal-new-campaign">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>📢 Nouvelle Campagne</h3>
-        <button class="modal-close" onclick="closeModal('modal-new-campaign')">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Nom de la campagne *</label>
-          <input type="text" id="camp-name" placeholder="Ex: Campagne Présidentielle 2028">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Type</label>
-            <select id="camp-type">
-              <option value="presidentielle">Présidentielle</option>
-              <option value="senatoriale">Sénatoriale</option>
-              <option value="municipale">Municipale</option>
-              <option value="regionale">Régionale</option>
-              <option value="locale">Locale</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Région</label>
-            <input type="text" id="camp-region" placeholder="Ex: Ouest">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Budget (FCFA)</label>
-          <input type="number" id="camp-budget" placeholder="0" min="0">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeModal('modal-new-campaign')">Annuler</button>
-        <button class="btn-primary" id="btn-save-campaign">✅ Créer</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========== MODAL : ÉDITION CAMPAGNE ========== -->
-  <div class="modal-overlay hidden" id="modal-edit-campaign">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>✏️ Modifier la Campagne</h3>
-        <button class="modal-close" onclick="closeModal('modal-edit-campaign')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="edit-camp-id">
-        <div class="form-group">
-          <label>Nom de la campagne</label>
-          <input type="text" id="edit-camp-name">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Type</label>
-            <select id="edit-camp-type">
-              <option value="presidentielle">Présidentielle</option>
-              <option value="senatoriale">Sénatoriale</option>
-              <option value="municipale">Municipale</option>
-              <option value="regionale">Régionale</option>
-              <option value="locale">Locale</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Région</label>
-            <input type="text" id="edit-camp-region">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Budget (FCFA)</label>
-            <input type="number" id="edit-camp-budget" min="0">
-          </div>
-          <div class="form-group">
-            <label>Statut</label>
-            <select id="edit-camp-status">
-              <option value="active">Active</option>
-              <option value="paused">En pause</option>
-              <option value="ended">Terminée</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeModal('modal-edit-campaign')">Annuler</button>
-        <button class="btn-primary" id="btn-save-edit-campaign">💾 Enregistrer</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========== MODAL : PAIEMENT COMMANDE ========== -->
-  <div class="modal-overlay hidden" id="modal-pay-order">
-    <div class="modal modal-sm">
-      <div class="modal-header">
-        <h3>💳 Payer la Commande</h3>
-        <button class="modal-close" onclick="closeModal('modal-pay-order')">✕</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="pay-order-id">
-        <div class="form-group">
-          <label>Moyen de paiement</label>
-          <select id="pay-method">
-            <option value="wave">Wave</option>
-            <option value="orange">Orange Money</option>
-            <option value="mtn">MTN Mobile Money</option>
-            <option value="cash">Espèces</option>
-          </select>
-        </div>
-        <p class="modal-hint">Le statut de la commande sera mis à jour après confirmation.</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeModal('modal-pay-order')">Annuler</button>
-        <button class="btn-primary" id="btn-confirm-pay">✅ Confirmer le paiement</button>
-      </div>
-    </div>
-  </div>
+  <div id="toast-container"></div>
 
   <script src="app.js"></script>
 </body>
