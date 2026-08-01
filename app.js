@@ -73,7 +73,10 @@ function clearAuth() {
 }
 
 function getUser() {
-  try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+  try { 
+    const raw = JSON.parse(localStorage.getItem('user') || '{}');
+    return raw.user || raw;
+  }
   catch { return {}; }
 }
 
@@ -110,7 +113,8 @@ async function register(userData) {
 }
 
 async function getMe() {
-  return api('/api/v1/auth/me');
+  const data = await api('/api/v1/auth/me');
+  return data.user || data;
 }
 
 function logout() {
@@ -369,8 +373,9 @@ function setupGlobalListeners() {
 
 async function loadUserInfo() {
   try {
-    const user = await getMe();
-    setUser(user);
+    const data = await getMe();
+    const user = data.user || data;
+    if (user && user.id) setUser(user);
     const initials = (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
     const mobileAvatar = document.getElementById('mobile-avatar');
     if (mobileAvatar) mobileAvatar.textContent = initials.toUpperCase() || 'U';
@@ -711,7 +716,8 @@ async function loadProfile() {
   let user = getUser();
   try {
     const fresh = await getMe();
-    if (fresh && fresh.id) { setUser(fresh); user = fresh; }
+    const freshUser = fresh.user || fresh;
+    if (freshUser && freshUser.id) { setUser(freshUser); user = freshUser; }
   } catch (e) {
     console.warn('getMe failed in loadProfile, using cached user');
   }
