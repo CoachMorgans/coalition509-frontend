@@ -2,470 +2,530 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Coalition 509 — Tableau de bord</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <style>
-    /* ============================================================
-       Coalition 509 — Dashboard Styles v1.5.1
-       ============================================================ */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; }
-
-    /* Layout */
-    .app { display: flex; min-height: 100vh; }
-    .sidebar { width: 260px; background: #1a1a2e; color: #fff; display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; transition: transform 0.3s; }
-    .sidebar.closed { transform: translateX(-100%); }
-    .main { flex: 1; margin-left: 260px; padding: 24px 32px; min-height: 100vh; }
-    @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); } .main { margin-left: 0; padding: 16px; } }
-
-    /* Sidebar */
-    .sidebar-brand { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .sidebar-brand h1 { font-size: 20px; font-weight: 700; }
-    .sidebar-brand h1 span { color: #e74c3c; }
-    .sidebar-brand small { font-size: 11px; opacity: 0.6; }
-    .sidebar-nav { flex: 1; padding: 16px 0; }
-    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; cursor: pointer; transition: all 0.2s; color: rgba(255,255,255,0.7); font-size: 14px; border-left: 3px solid transparent; }
-    .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-    .nav-item.active { background: rgba(255,255,255,0.08); color: #fff; border-left-color: #e74c3c; }
-    .nav-item i { font-size: 18px; width: 24px; text-align: center; }
-    .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.1); }
-    .user-mini { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: #e74c3c; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
-    .user-mini .name { font-size: 13px; font-weight: 600; }
-    .user-mini .role { font-size: 11px; opacity: 0.6; }
-    .admin-badge { display: none; background: #e74c3c; color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
-    .btn-logout { width: 100%; padding: 10px; background: #e74c3c; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
-    .btn-logout:hover { background: #c0392b; }
-    .mobile-toggle { display: none; position: fixed; top: 16px; left: 16px; z-index: 200; width: 40px; height: 40px; background: #1a1a2e; color: #fff; border: none; border-radius: 8px; font-size: 20px; cursor: pointer; }
-    @media (max-width: 768px) { .mobile-toggle { display: flex; align-items: center; justify-content: center; } }
-
-    /* Header */
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h2 { font-size: 24px; font-weight: 700; }
-    .api-status { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #27ae60; }
-    .api-status::before { content: ''; width: 8px; height: 8px; background: #27ae60; border-radius: 50%; }
-
-    /* Sections */
-    .section { display: none; }
-    .section.active { display: block; }
-
-    /* Cards */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .stat-card .stat-icon { font-size: 24px; margin-bottom: 8px; }
-    .stat-card .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
-    .stat-card .stat-label { font-size: 13px; color: #888; }
-
-    /* Bot Stats */
-    .bot-stats-section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .bot-stats-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .bot-stats-header h3 { display: flex; align-items: center; gap: 8px; font-size: 16px; }
-    .bot-version { background: #3b82f6; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 4px; }
-    .bot-stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px; }
-    @media (max-width: 768px) { .bot-stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    .bot-stat { text-align: center; padding: 16px; border-radius: 8px; }
-    .bot-stat .stat-value { font-size: 32px; font-weight: 700; }
-    .bot-stat .stat-label { font-size: 12px; color: #666; margin-top: 4px; }
-    .bot-stat.blue { border-left: 4px solid #3b82f6; }
-    .bot-stat.orange { border-left: 4px solid #f59e0b; }
-    .bot-stat.green { border-left: 4px solid #10b981; }
-    .bot-stat.purple { border-left: 4px solid #8b5cf6; }
-    .bot-stat.pink { border-left: 4px solid #ec4899; }
-    .bot-week-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-    .bot-week-item { text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px; }
-    .bot-week-item strong { display: block; font-size: 20px; color: #1a1a2e; }
-    .bot-week-item span { font-size: 12px; color: #888; }
-    .bot-chart-container { height: 240px; position: relative; }
-
-    /* Tables */
-    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .card-header h3 { font-size: 16px; }
-    .btn-primary { padding: 8px 16px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
-    .btn-primary:hover { background: #2d2d44; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; }
-    th { font-weight: 600; color: #888; font-size: 11px; text-transform: uppercase; }
-    tr:hover { background: #f8f9fa; }
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #e8f4fd; color: #2980b9; }
-    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .status-active { background: #d4edda; color: #155724; }
-    .status-pending { background: #fff3cd; color: #856404; }
-    .status-completed { background: #d4edda; color: #155724; }
-    .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
-    .btn-icon:hover { opacity: 0.7; }
-    .pagination { display: flex; gap: 4px; justify-content: center; margin-top: 16px; }
-    .pagination button { padding: 6px 12px; border: 1px solid #e0e0e0; background: #fff; cursor: pointer; border-radius: 4px; font-size: 13px; }
-    .pagination button.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
-    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    /* Filters */
-    .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-    .filters input, .filters select { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; }
-    .filters button { padding: 8px 16px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
-
-    /* Profile */
-    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 768px) { .profile-grid { grid-template-columns: 1fr; } }
-    .profile-readonly .prof-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
-    .profile-readonly .prof-row:last-child { border-bottom: none; }
-    .profile-readonly label { color: #888; font-size: 13px; }
-    .profile-readonly span { font-weight: 600; color: #1a1a2e; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #555; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; font-family: inherit; }
-    .form-group input:focus, .form-group select:focus { outline: none; border-color: #3b82f6; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
-    .btn-submit { padding: 12px 24px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
-    .btn-submit:hover { background: #2d2d44; }
-    .btn-export { padding: 8px 16px; background: #1a1a2e; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
-    .btn-export:hover { background: #2d2d44; }
-
-    /* Modal */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-    .modal.active { display: flex; }
-    .modal-content { background: #fff; border-radius: 12px; max-width: 560px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .modal-header h3 { font-size: 18px; }
-    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #888; }
-    .modal-close:hover { color: #1a1a2e; }
-
-    /* Toast */
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
-
-    /* Loading */
-    .loading { text-align: center; padding: 40px; color: #888; }
-    .text-error { color: #e74c3c; }
-    .text-center { text-align: center; }
-  </style>
 </head>
-<body>
-  <button class="mobile-toggle" id="mobile-menu-toggle">☰</button>
+<body class="dashboard-body">
 
-  <div class="app">
-    <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
-        <h1>HT Coalition <span>509</span></h1>
-        <small>VoteConnect | ChallengeFinancier™</small>
+  <!-- ========== MOBILE HEADER ========== -->
+  <header class="mobile-header">
+    <button class="menu-toggle" id="mobile-menu-toggle" aria-label="Menu">☰</button>
+    <div class="mobile-brand">
+      <h1>Coalition <span>509</span></h1>
+    </div>
+    <div class="user-avatar" id="mobile-avatar">U</div>
+  </header>
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Coalition <span>509</span></h2>
+      <p>VoteConnect Ecosystem | ChallengeFinancier™</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-section="overview" href="#">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Vue d'ensemble</span>
+      </a>
+      <a class="nav-item" data-section="campaigns" href="#">
+        <span class="nav-icon">📢</span>
+        <span class="nav-label">Campagnes</span>
+      </a>
+      <a class="nav-item" data-section="users" href="#" id="nav-users" style="display:none;">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">Utilisateurs</span>
+      </a>
+      <a class="nav-item" data-section="orders" href="#" id="nav-orders" style="display:none;">
+        <span class="nav-icon">🔒</span>
+        <span class="nav-label">Commandes TCL</span>
+      </a>
+      <a class="nav-item" data-section="profile" href="#">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Mon Profil</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-mini">
+        <div class="user-avatar" id="sidebar-avatar">U</div>
+        <div class="user-info">
+          <div class="name" id="sidebar-name">—</div>
+          <div class="role" id="sidebar-role">—</div>
+        </div>
       </div>
-      <nav class="sidebar-nav">
-        <div class="nav-item active" data-section="overview">
-          <span>☰</span> Vue d'ensemble
-        </div>
-        <div class="nav-item" data-section="campaigns">
-          <span>📢</span> Campagnes
-        </div>
-        <div class="nav-item" data-section="users" style="display:none;">
-          <span>👥</span> Utilisateurs
-        </div>
-        <div class="nav-item" data-section="orders" style="display:none;">
-          <span>🔒</span> Commandes TCL
-        </div>
-        <div class="nav-item" data-section="profile">
-          <span>👤</span> Mon Profil
-        </div>
-      </nav>
-      <div class="sidebar-footer">
-        <div class="user-mini">
-          <div class="user-avatar">U</div>
-          <div>
-            <div class="name">—</div>
-            <div class="role">—</div>
-          </div>
-          <span class="admin-badge" id="admin-badge">ADMIN</span>
-        </div>
-        <button class="btn-logout" id="logout-btn">⏻ Déconnexion</button>
+      <button class="btn btn-danger" id="logout-btn" style="width:100%;margin-top:12px;font-size:13px;">⏻ Déconnexion</button>
+    </div>
+  </aside>
+
+  <!-- Sidebar overlay for mobile -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="main-content" id="main-content">
+
+    <!-- Desktop topbar -->
+    <div class="topbar desktop-only">
+      <h1 id="page-title">📊 Vue d'ensemble</h1>
+      <div class="topbar-actions">
+        <span class="badge badge-success" id="api-status" style="margin-right:8px;">● API CONNECTEE</span>
+        <button class="btn btn-sm btn-secondary" id="refresh-btn">🔄 Actualiser</button>
+        <button class="btn btn-sm btn-danger" id="logout-btn-desktop">🚪 Déconnexion</button>
       </div>
-    </aside>
+    </div>
 
-    <!-- MAIN -->
-    <main class="main">
-      <!-- SECTION: OVERVIEW -->
-      <section class="section active" id="section-overview">
-        <div class="page-header">
-          <h2>Tableau de bord</h2>
-          <div class="api-status">API CONNECTEE</div>
+    <!-- ===== SECTION: OVERVIEW ===== -->
+    <section class="section active" id="section-overview">
+      <div class="stats-grid" id="overview-stats">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #D4AF37, #228B22);">👥</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-users">0</div>
+            <div class="stat-label">Membres NGD</div>
+          </div>
         </div>
-        <div class="stats-grid" id="overview-stats">
-          <div class="loading">Chargement des statistiques...</div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #228B22, #0d1f0d);">📢</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-campaigns">0</div>
+            <div class="stat-label">Campagnes</div>
+          </div>
         </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #D4AF37, #b8860b);">🛒</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-orders">0</div>
+            <div class="stat-label">Commandes TCL</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: linear-gradient(135deg, #228B22, #D4AF37);">💰</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-revenue">0 FCFA</div>
+            <div class="stat-label">Chiffre d'affaires</div>
+          </div>
+        </div>
+      </div>
 
-        <!-- BOT STATS -->
-        <div class="bot-stats-section" id="bot-stats-section">
-          <div class="bot-stats-header">
-            <h3>🤖 Stats Bot <span class="bot-version" id="bot-version">v1.2.0</span></h3>
-            <small style="color:#888;">Derniere mise a jour : <span id="bot-last-update">—</span></small>
+      <!-- BOT STATS -->
+      <div class="card mt-20">
+        <div class="card-header">
+          <h3>🤖 Stats Bot <span class="badge badge-info" id="bot-version">v1.2.0</span></h3>
+          <small style="color:#888;">Dernière mise à jour : <span id="bot-last-update">—</span></small>
+        </div>
+        <div class="card-body">
+          <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#3b82f6;">💬</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-conversations">0</div>
+                <div class="stat-label">Conversations</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f59e0b;">⚡</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-active">0</div>
+                <div class="stat-label">Actives</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#10b981;">🎯</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-leads">0</div>
+                <div class="stat-label">Leads</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#8b5cf6;">✅</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-conversions">0</div>
+                <div class="stat-label">Conversions</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#ec4899;">📩</div>
+              <div class="stat-info">
+                <div class="stat-value" id="bot-messages">0</div>
+                <div class="stat-label">Messages</div>
+              </div>
+            </div>
           </div>
-          <div class="bot-stats-grid">
-            <div class="bot-stat blue">
-              <div class="stat-value" id="bot-conversations">0</div>
-              <div class="stat-label">Conversations totales</div>
+          <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:20px;">
+            <div class="stat-card" style="justify-content:center;">
+              <div class="stat-info" style="text-align:center;">
+                <div class="stat-value" id="bot-week-leads" style="font-size:20px;">0</div>
+                <div class="stat-label">Leads (7j)</div>
+              </div>
             </div>
-            <div class="bot-stat orange">
-              <div class="stat-value" id="bot-active">0</div>
-              <div class="stat-label">Actives</div>
+            <div class="stat-card" style="justify-content:center;">
+              <div class="stat-info" style="text-align:center;">
+                <div class="stat-value" id="bot-week-conversions" style="font-size:20px;">0</div>
+                <div class="stat-label">Conversions (7j)</div>
+              </div>
             </div>
-            <div class="bot-stat green">
-              <div class="stat-value" id="bot-leads">0</div>
-              <div class="stat-label">Leads generees</div>
-            </div>
-            <div class="bot-stat purple">
-              <div class="stat-value" id="bot-conversions">0</div>
-              <div class="stat-label">Conversions</div>
-            </div>
-            <div class="bot-stat pink">
-              <div class="stat-value" id="bot-messages">0</div>
-              <div class="stat-label">Messages envoyes</div>
+            <div class="stat-card" style="justify-content:center;">
+              <div class="stat-info" style="text-align:center;">
+                <div class="stat-value" id="bot-week-messages" style="font-size:20px;">0</div>
+                <div class="stat-label">Messages (7j)</div>
+              </div>
             </div>
           </div>
-          <div class="bot-week-grid" id="bot-week-summary">
-            <div class="bot-week-item"><strong>0</strong><span>Leads (7j)</span></div>
-            <div class="bot-week-item"><strong>0</strong><span>Conversions (7j)</span></div>
-            <div class="bot-week-item"><strong>0</strong><span>Messages (7j)</span></div>
-          </div>
-          <div class="bot-chart-container">
+          <div style="height:240px;position:relative;">
             <canvas id="bot-stats-chart"></canvas>
           </div>
           <div id="bot-stats-error" style="color:#e74c3c;font-size:12px;text-align:center;margin-top:8px;"></div>
         </div>
-      </section>
+      </div>
 
-      <!-- SECTION: CAMPAIGNS -->
-      <section class="section" id="section-campaigns">
-        <div class="page-header">
-          <h2>Campagnes</h2>
-          <button class="btn-primary" id="btn-create-campaign">+ Nouvelle campagne</button>
+      <!-- Coalition Progress -->
+      <div class="card mt-20">
+        <div class="card-header">
+          <h3>🗳️ Coalition 509 — Progression</h3>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <button class="btn-export" data-export="campaigns">📥 CSV Campagnes</button>
-          <button class="btn-export" data-export="orders">📥 CSV Commandes</button>
-          <button class="btn-export" data-export="users">📥 CSV Utilisateurs</button>
+        <div class="card-body">
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="coalition-progress" style="width: 0%;"></div>
+          </div>
+          <p class="progress-text" id="coalition-text">0 / 232 groupes créés</p>
         </div>
-        <div class="filters">
-          <input type="text" id="camp-filter-search" placeholder="Rechercher...">
-          <select id="camp-filter-status">
-            <option value="">Tous les statuts</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <input type="text" id="camp-filter-region" placeholder="Region">
-          <button id="camp-filter-apply">Filtrer</button>
-        </div>
-        <div class="card">
-          <div class="table-wrap">
+      </div>
+    </section>
+
+    <!-- ===== SECTION: CAMPAIGNS ===== -->
+    <section class="section" id="section-campaigns">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>📢 Campagnes</h1>
+        <button class="btn btn-primary" id="btn-create-campaign">+ Nouvelle campagne</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-secondary" data-export="campaigns">📥 CSV Campagnes</button>
+        <button class="btn btn-sm btn-secondary" data-export="orders">📥 CSV Commandes</button>
+        <button class="btn btn-sm btn-secondary" data-export="users">📥 CSV Utilisateurs</button>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            <input type="text" id="camp-filter-search" placeholder="Rechercher..." style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;flex:1;min-width:200px;">
+            <select id="camp-filter-status" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;background:#fff;">
+              <option value="">Tous les statuts</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <input type="text" id="camp-filter-region" placeholder="Région" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
+            <button class="btn btn-primary" id="camp-filter-apply">Filtrer</button>
+          </div>
+          <div class="table-container">
             <table>
               <thead>
-                <tr><th>Nom</th><th>Type</th><th>Region</th><th>Date</th><th>Statut</th><th>Prix</th><th>Actions</th></tr>
+                <tr>
+                  <th>Nom</th>
+                  <th>Type</th>
+                  <th>Région</th>
+                  <th>Date</th>
+                  <th>Statut</th>
+                  <th>Prix</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
               </thead>
               <tbody id="campaigns-table-body">
-                <tr><td colspan="7" class="text-center">Chargement...</td></tr>
+                <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
               </tbody>
             </table>
           </div>
-          <div id="campaigns-pagination"></div>
+          <div id="campaigns-pagination" style="margin-top:16px;"></div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- SECTION: USERS -->
-      <section class="section" id="section-users">
-        <div class="page-header"><h2>Utilisateurs</h2></div>
-        <div class="card">
-          <div class="table-wrap">
+    <!-- ===== SECTION: USERS ===== -->
+    <section class="section" id="section-users">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>👥 Utilisateurs</h1>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-container">
             <table>
               <thead>
-                <tr><th>Nom</th><th>Telephone</th><th>Email</th><th>Profil</th><th>Region</th><th>Statut</th><th>Inscrit</th></tr>
+                <tr>
+                  <th>Nom</th>
+                  <th>Téléphone</th>
+                  <th>Email</th>
+                  <th>Profil</th>
+                  <th>Région</th>
+                  <th>Statut</th>
+                  <th>Inscrit</th>
+                </tr>
               </thead>
               <tbody id="users-table-body">
-                <tr><td colspan="7" class="text-center">Chargement...</td></tr>
+                <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- SECTION: ORDERS -->
-      <section class="section" id="section-orders">
-        <div class="page-header"><h2>Commandes TCL</h2></div>
-        <div class="card">
-          <div class="table-wrap">
+    <!-- ===== SECTION: ORDERS ===== -->
+    <section class="section" id="section-orders">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>🛒 Commandes TCL</h1>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-container">
             <table>
               <thead>
-                <tr><th>N°</th><th>Client</th><th>Montant</th><th>Region</th><th>Statut</th><th>Paiement</th><th>Date</th><th>Actions</th></tr>
+                <tr>
+                  <th>N°</th>
+                  <th>Client</th>
+                  <th>Montant</th>
+                  <th>Région</th>
+                  <th>Statut</th>
+                  <th>Paiement</th>
+                  <th>Date</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
               </thead>
               <tbody id="orders-table-body">
-                <tr><td colspan="8" class="text-center">Chargement...</td></tr>
+                <tr><td colspan="8" class="loading"><span class="spinner"></span> Chargement...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- SECTION: PROFILE -->
-      <section class="section" id="section-profile">
-        <div class="page-header"><h2>Mon Profil</h2></div>
-        <div class="profile-grid">
-          <div class="card">
+    <!-- ===== SECTION: PROFILE ===== -->
+    <section class="section" id="section-profile">
+      <div class="topbar" style="margin-bottom:20px;">
+        <h1>👤 Mon Profil</h1>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card">
+          <div class="card-header">
             <h3>Informations</h3>
-            <div class="profile-readonly">
-              <div class="prof-row"><label>ID NGD</label><span id="prof-display-ngd">—</span></div>
-              <div class="prof-row"><label>Nom complet</label><span id="prof-display-name">—</span></div>
-              <div class="prof-row"><label>Telephone</label><span id="prof-display-phone">—</span></div>
-              <div class="prof-row"><label>Email</label><span id="prof-display-email">—</span></div>
-              <div class="prof-row"><label>Region</label><span id="prof-display-region">—</span></div>
-              <div class="prof-row"><label>Commune</label><span id="prof-display-commune">—</span></div>
-              <div class="prof-row"><label>Role</label><span id="prof-display-role">—</span></div>
-              <div class="prof-row"><label>Profil</label><span id="prof-display-profile">—</span></div>
+          </div>
+          <div class="card-body">
+            <div class="profile-body" style="padding:0;">
+              <div class="profile-avatar-large" id="profile-avatar">U</div>
+              <h2 id="profile-name">—</h2>
+              <p id="profile-role" class="profile-role">—</p>
+            </div>
+            <div class="profile-details">
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🆔 ID NGD</span>
+                <span class="profile-detail-value" id="prof-display-ngd">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">👤 Nom complet</span>
+                <span class="profile-detail-value" id="prof-display-name">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">📱 Téléphone</span>
+                <span class="profile-detail-value" id="prof-display-phone">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">📧 Email</span>
+                <span class="profile-detail-value" id="prof-display-email">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">📍 Région</span>
+                <span class="profile-detail-value" id="prof-display-region">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🏙️ Commune</span>
+                <span class="profile-detail-value" id="prof-display-commune">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🎭 Rôle</span>
+                <span class="profile-detail-value" id="prof-display-role">—</span>
+              </div>
+              <div class="profile-detail-row">
+                <span class="profile-detail-label">🎯 Profil</span>
+                <span class="profile-detail-value" id="prof-display-profile">—</span>
+              </div>
             </div>
           </div>
-          <div class="card">
-            <h3>Modifier mon profil</h3>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>✏️ Modifier mon profil</h3>
+          </div>
+          <div class="card-body">
             <form id="form-profile">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Prenom</label>
-                  <input type="text" id="prof-first-name" required>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Prénom</label>
+                  <input type="text" id="prof-first-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom:0;">
                   <label>Nom</label>
-                  <input type="text" id="prof-last-name" required>
+                  <input type="text" id="prof-last-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
                 </div>
               </div>
               <div class="form-group">
-                <label>Telephone</label>
-                <input type="tel" id="prof-phone" required>
+                <label>Téléphone</label>
+                <input type="tel" id="prof-phone" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
               </div>
               <div class="form-group">
                 <label>Email</label>
-                <input type="email" id="prof-email">
+                <input type="email" id="prof-email" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
               </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Region</label>
-                  <input type="text" id="prof-region">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Région</label>
+                  <input type="text" id="prof-region-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom:0;">
                   <label>Commune</label>
-                  <input type="text" id="prof-commune">
+                  <input type="text" id="prof-commune-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
                 </div>
               </div>
-              <hr style="margin:16px 0;border:none;border-top:1px solid #e0e0e0;">
-              <div class="form-row">
-                <div class="form-group">
+              <hr style="margin:16px 0;border:none;border-top:1px solid #e8eaed;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:0;">
                   <label>Nouveau PIN (4 chiffres)</label>
-                  <input type="password" id="prof-new-pin" maxlength="4" placeholder="Laisser vide pour ne pas changer">
+                  <input type="password" id="prof-new-pin" maxlength="4" placeholder="Laisser vide" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom:0;">
                   <label>Confirmer le PIN</label>
-                  <input type="password" id="prof-confirm-pin" maxlength="4">
+                  <input type="password" id="prof-confirm-pin" maxlength="4" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
                 </div>
               </div>
-              <button type="submit" class="btn-submit">Enregistrer les modifications</button>
+              <button type="submit" class="btn-submit">💾 Enregistrer les modifications</button>
             </form>
           </div>
         </div>
-      </section>
-    </main>
-  </div>
+      </div>
+    </section>
+  </main>
 
-  <!-- MODAL: Campaign -->
-  <div class="modal" id="modal-campaign">
-    <div class="modal-content">
+  <!-- ========== BOTTOM NAV (Mobile) ========== -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <a class="bottom-nav-item active" data-section="overview" href="#">
+      <span class="bottom-nav-icon">📊</span>
+      <span class="bottom-nav-label">Accueil</span>
+    </a>
+    <a class="bottom-nav-item" data-section="campaigns" href="#">
+      <span class="bottom-nav-icon">📢</span>
+      <span class="bottom-nav-label">Campagnes</span>
+    </a>
+    <a class="bottom-nav-item" data-section="orders" href="#" id="bottom-nav-orders" style="display:none;">
+      <span class="bottom-nav-icon">🛒</span>
+      <span class="bottom-nav-label">Commandes</span>
+    </a>
+    <a class="bottom-nav-item" data-section="profile" href="#">
+      <span class="bottom-nav-icon">👤</span>
+      <span class="bottom-nav-label">Profil</span>
+    </a>
+  </nav>
+
+  <!-- ========== MODAL: Campaign ========== -->
+  <div class="modal-overlay" id="modal-campaign-overlay">
+    <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title">Nouvelle campagne</h3>
+        <h3 id="modal-campaign-title">Nouvelle campagne</h3>
         <button class="modal-close" id="modal-campaign-close">&times;</button>
       </div>
-      <form id="form-campaign">
-        <div class="form-group">
-          <label>Nom de la campagne *</label>
-          <input type="text" id="camp-name" required>
-        </div>
-        <div class="form-row">
+      <div class="modal-body">
+        <form id="form-campaign">
           <div class="form-group">
-            <label>Type d'election *</label>
-            <select id="camp-type" required>
-              <option value="">Choisir...</option>
-              <option value="Presidentielle">Presidentielle</option>
-              <option value="Senatoriales">Senatoriales</option>
-              <option value="Depute">Depute</option>
-              <option value="Municipales">Municipales</option>
-            </select>
+            <label>Nom de la campagne *</label>
+            <input type="text" id="camp-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Type d'élection *</label>
+              <select id="camp-type" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+                <option value="">Choisir...</option>
+                <option value="Presidentielle">Présidentielle</option>
+                <option value="Senatoriales">Sénatoriales</option>
+                <option value="Depute">Député</option>
+                <option value="Municipales">Municipales</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Date de l'élection</label>
+              <input type="date" id="camp-date" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Région *</label>
+              <input type="text" id="camp-region" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Commune</label>
+              <input type="text" id="camp-commune" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
           </div>
           <div class="form-group">
-            <label>Date de l'election</label>
-            <input type="date" id="camp-date">
+            <label>Description</label>
+            <textarea id="camp-desc" rows="3" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;font-family:inherit;"></textarea>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Region *</label>
-            <input type="text" id="camp-region" required>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Prix HT (FCFA)</label>
+              <input type="number" id="camp-price" value="0" min="0" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Modèle de tarification</label>
+              <select id="camp-pricing" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+                <option value="forfait">Forfait</option>
+                <option value="abonnement">Abonnement</option>
+                <option value="commission">Commission</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Commune</label>
-            <input type="text" id="camp-commune">
+          <div class="modal-footer" style="padding:0;border:none;">
+            <button type="button" class="btn btn-secondary" id="modal-campaign-cancel">Annuler</button>
+            <button type="submit" class="btn btn-primary">💾 Créer</button>
           </div>
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <textarea id="camp-desc" rows="3"></textarea>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Prix HT (Gdes)</label>
-            <input type="number" id="camp-price" value="0" min="0">
-          </div>
-          <div class="form-group">
-            <label>Modele de tarification</label>
-            <select id="camp-pricing">
-              <option value="forfait">Forfait</option>
-              <option value="abonnement">Abonnement</option>
-              <option value="commission">Commission</option>
-            </select>
-          </div>
-        </div>
-        <button type="submit" class="btn-submit" style="width:100%;">Creer</button>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
 
-  <!-- MODAL: Payment -->
-  <div class="modal" id="modal-payment">
-    <div class="modal-content" style="max-width:420px;">
+  <!-- ========== MODAL: Payment ========== -->
+  <div class="modal-overlay" id="modal-payment-overlay">
+    <div class="modal" style="max-width:420px;">
       <div class="modal-header">
-        <h3>Paiement</h3>
+        <h3>💳 Paiement</h3>
         <button class="modal-close" id="modal-payment-close">&times;</button>
       </div>
-      <form id="form-payment">
-        <input type="hidden" id="pay-order-id">
-        <div class="form-group">
-          <label>Montant</label>
-          <div id="pay-amount" style="font-size:18px;font-weight:700;color:#27ae60;">0 Gdes</div>
-        </div>
-        <div class="form-group">
-          <label>Methode de paiement</label>
-          <select id="pay-method" class="form-control">
-            <option value="moncash">MonCash (Digicel)</option>
-            <option value="natcash">NatCash (Natcom)</option>
-            <option value="paypal">PayPal</option>
-            <option value="stripe">Carte bancaire (Stripe)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Numero de telephone (pour MonCash/NatCash)</label>
-          <input type="tel" id="pay-phone" placeholder="Ex: 50912345678">
-        </div>
-        <div id="pay-instructions" style="display:none;padding:12px;background:#e8f5e9;border-radius:6px;margin-bottom:12px;font-size:13px;color:#2e7d32;"></div>
-        <button type="submit" class="btn-submit" style="width:100%;">Initier le paiement</button>
-        <button type="button" id="btn-confirm-payment" class="btn-submit" style="width:100%;display:none;background:#27ae60;margin-top:8px;">Confirmer le paiement</button>
-      </form>
+      <div class="modal-body">
+        <form id="form-payment">
+          <input type="hidden" id="pay-order-id">
+          <div class="form-group">
+            <label>Montant</label>
+            <div id="pay-amount" style="font-size:20px;font-weight:700;color:#228B22;">0 FCFA</div>
+          </div>
+          <div class="form-group">
+            <label>Méthode de paiement</label>
+            <select id="pay-method" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+              <option value="wave">Wave</option>
+              <option value="moncash">MonCash (Digicel)</option>
+              <option value="natcash">NatCash (Natcom)</option>
+              <option value="paypal">PayPal</option>
+              <option value="stripe">Carte bancaire (Stripe)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Numéro de téléphone (pour Wave/MonCash/NatCash)</label>
+            <input type="tel" id="pay-phone" placeholder="Ex: 50912345678" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
+          </div>
+          <div id="pay-instructions" style="display:none;padding:12px;background:#e8f5e9;border-radius:10px;margin-bottom:12px;font-size:13px;color:#2e7d32;"></div>
+          <button type="submit" class="btn-submit">🚀 Initier le paiement</button>
+          <button type="button" id="btn-confirm-payment" class="btn-submit" style="display:none;background:linear-gradient(135deg,#228B22,#0d1f0d);margin-top:8px;">✅ Confirmer le paiement</button>
+        </form>
+      </div>
     </div>
   </div>
+
+  <!-- ========== TOAST ========== -->
+  <div id="toast-container"></div>
 
   <script src="app.js"></script>
 </body>
