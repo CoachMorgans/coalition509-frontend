@@ -955,6 +955,13 @@ tbody tr:last-child td {
   color: #666;
 }
 
+/* Section topbars — cachées en desktop (redondantes avec la topbar globale) */
+@media (min-width: 769px) {
+  .section-topbar {
+    display: none !important;
+  }
+}
+
 /* ============================================================
    RESPONSIVE — MOBILE FIRST
    ============================================================ */
