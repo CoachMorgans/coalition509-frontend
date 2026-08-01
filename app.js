@@ -1,670 +1,861 @@
 /* ============================================================
-   Coalition 509 SaaS — Frontend v1.5.9-fix
-   Routes API corrigées · Nav fonctionnelle · Modals OK
+   COALITION 509 — Frontend Logic
+   VoteConnect Ecosystem | ChallengeFinancier™
+   v1.5.2-corrected
    ============================================================ */
 
-const API_URL = 'https://coalition509-api.onrender.com';
+// ⚙️ CONFIGURATION
+const API_BASE_URL = localStorage.getItem('api_url') || 'https://coalition509-api.onrender.com';
 
-/* ---------- AUTH ---------- */
-function getToken() { return localStorage.getItem('token'); }
+// ============================================================
+// UTILITAIRES
+// ============================================================
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+function formatNumber(n) {
+  return new Intl.NumberFormat('fr-FR').format(n || 0);
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('fr-FR', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function formatCurrency(n) {
+  return (n || 0).toLocaleString('fr-FR') + ' FCFA';
+}
+
+function showAlert(message, type = 'error', container = null) {
+  const div = document.createElement('div');
+  div.className = `alert alert-${type}`;
+  div.innerHTML = `<span>${message}</span>`;
+  const target = container || document.body;
+  if (container) {
+    target.prepend(div);
+  } else {
+    target.insertBefore(div, target.firstChild);
+  }
+  setTimeout(() => div.remove(), 5000);
+}
+
+function showToast(message, type = 'info') {
+  const container = $('#toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  const colors = { success: '#228B22', error: '#e60023', info: '#3b82f6', warning: '#f59e0b' };
+  toast.style.borderLeftColor = colors[type] || colors.info;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+function getToken() {
+  return localStorage.getItem('access_token');
+}
+
+function setToken(token) {
+  localStorage.setItem('access_token', token);
+}
+
+function clearAuth() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('user');
+}
+
 function getUser() {
   try { return JSON.parse(localStorage.getItem('user') || '{}'); }
   catch { return {}; }
 }
+
+function setUser(user) {
+  localStorage.setItem('user', JSON.stringify(user));
+}
+
+// ============================================================
+// API CLIENT
+// ============================================================
+async function api(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(url, { ...options, headers });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.detail || data.message || `Erreur ${res.status}`);
+    }
+    return data;
+  } catch (err) {
+    console.error('API Error:', err);
+    throw err;
+  }
+}
+
+// ============================================================
+// AUTHENTIFICATION
+// ============================================================
+async function login(phone, pin) {
+  const data = await api('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ phone, pin })
+  });
+  setToken(data.access_token);
+  setUser(data.user);
+  return data;
+}
+
+async function register(userData) {
+  return api('/api/v1/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  });
+}
+
+async function getMe() {
+  return api('/api/v1/auth/me');
+}
+
 function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  clearAuth();
   window.location.href = 'index.html';
 }
 
-/* ---------- HELPERS ---------- */
-function fmtFCFA(n) {
-  if (n === undefined || n === null) return '0 FCFA';
-  return Number(n).toLocaleString('fr-FR') + ' FCFA';
-}
-function fmtDate(d) {
-  if (!d) return '—';
-  const date = new Date(d);
-  return date.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
-}
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function getDashboardStats() {
+  return api('/api/v1/dashboard/stats');
 }
 
-/* ---------- API ---------- */
-async function apiGet(path) {
-  try {
-    const res = await fetch(API_URL + path, {
-      headers: { 'Authorization': 'Bearer ' + getToken() }
-    });
-    const json = await res.json();
-    console.log('[API GET]', path, json);
-    return json;
-  } catch (e) {
-    console.error('[API GET ERROR]', path, e.message);
-    return { ok: false, error: e.message };
+// ============================================================
+// CAMPAGNES
+// ============================================================
+async function listCampaigns(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/api/v1/campaigns?${qs}`);
+}
+
+async function createCampaign(data) {
+  return api('/api/v1/campaigns', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+// ============================================================
+// UTILISATEURS
+// ============================================================
+async function listUsers(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/api/v1/users?${qs}`);
+}
+
+// ============================================================
+// COMMANDES
+// ============================================================
+async function getOrders(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/api/v1/orders?${qs}`);
+}
+
+// ============================================================
+// CONFIG
+// ============================================================
+async function getConfig() {
+  return api('/api/v1/config');
+}
+
+// ============================================================
+// UI HELPERS — DASHBOARD
+// ============================================================
+function renderStatCard({ value, label, icon, type = 'primary', change = null }) {
+  const changeHtml = change !== null
+    ? `<div class="stat-change ${change >= 0 ? 'positive' : 'negative'}">${change >= 0 ? '↑' : '↓'} ${Math.abs(change)}%</div>`
+    : '';
+  return `
+    <div class="stat-card ${type}">
+      <div class="stat-header">
+        <div class="stat-icon">${icon}</div>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">${value}</div>
+        <div class="stat-label">${label}</div>
+      </div>
+      ${changeHtml}
+    </div>
+  `;
+}
+
+function renderTable(headers, rows, emptyMsg = 'Aucune donnée disponible') {
+  if (!rows || rows.length === 0) {
+    return `<div class="empty-state"><p>${emptyMsg}</p></div>`;
   }
+  const ths = headers.map(h => `<th>${h}</th>`).join('');
+  const trs = rows.map(row => `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
+  return `
+    <div class="table-container">
+      <table>
+        <thead><tr>${ths}</tr></thead>
+        <tbody>${trs}</tbody>
+      </table>
+    </div>
+  `;
 }
-async function apiPost(path, body) {
-  try {
-    const res = await fetch(API_URL + path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-      body: JSON.stringify(body)
-    });
-    const json = await res.json();
-    console.log('[API POST]', path, json);
-    return json;
-  } catch (e) {
-    console.error('[API POST ERROR]', path, e.message);
-    return { ok: false, error: e.message };
+
+function renderBadge(text, type) {
+  return `<span class="badge badge-${type}">${text}</span>`;
+}
+
+// ============================================================
+// PAGE INITIALIZATION
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const path = window.location.pathname;
+
+  if (path.includes('index.html') || path === '/' || path === '') {
+    initAuthPage();
+  } else if (path.includes('dashboard.html')) {
+    initDashboardPage();
   }
-}
-async function apiPut(path, body) {
-  try {
-    const res = await fetch(API_URL + path, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-      body: JSON.stringify(body)
-    });
-    const json = await res.json();
-    console.log('[API PUT]', path, json);
-    return json;
-  } catch (e) {
-    console.error('[API PUT ERROR]', path, e.message);
-    return { ok: false, error: e.message };
+});
+
+// ============================================================
+// AUTH PAGE LOGIC
+// ============================================================
+function initAuthPage() {
+  if (getToken()) {
+    window.location.href = 'dashboard.html';
+    return;
   }
-}
 
-/* ---------- NAVIGATION ---------- */
-function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-  const sec = document.getElementById(id);
-  if (sec) sec.classList.remove('hidden');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const navMap = {
-    'dashboard-section': 'nav-dashboard',
-    'campaigns-section': 'nav-campaigns',
-    'users-section': 'nav-users',
-    'orders-section': 'nav-orders',
-    'profile-section': 'nav-profile'
-  };
-  const navId = navMap[id];
-  if (navId) {
-    const el = document.getElementById(navId);
-    if (el) el.classList.add('active');
-  }
-  // Mobile nav
-  document.querySelectorAll('.mob-nav-item').forEach(n => n.classList.remove('active'));
-  const mobMap = {
-    'dashboard-section': 'mob-nav-dashboard',
-    'campaigns-section': 'mob-nav-campaigns',
-    'profile-section': 'mob-nav-profile'
-  };
-  const mobId = mobMap[id];
-  if (mobId) {
-    const el = document.getElementById(mobId);
-    if (el) el.classList.add('active');
-  }
-  window.scrollTo(0, 0);
-}
+  const loginTab = $('#tab-login');
+  const registerTab = $('#tab-register');
+  const loginForm = $('#login-form');
+  const registerForm = $('#register-form');
 
-/* ---------- TOAST ---------- */
-function showToast(msg, type='info') {
-  const t = document.getElementById('toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.className = 'toast show ' + type;
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
+  loginTab?.addEventListener('click', () => {
+    loginTab.classList.add('active');
+    registerTab.classList.remove('active');
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+  });
 
-/* ---------- MODALS ---------- */
-function openModal(id) {
-  const m = document.getElementById(id);
-  if (m) { m.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-}
-function closeModal(id) {
-  const m = document.getElementById(id);
-  if (m) { m.classList.add('hidden'); document.body.style.overflow = ''; }
-}
+  registerTab?.addEventListener('click', () => {
+    registerTab.classList.add('active');
+    loginTab.classList.remove('active');
+    registerForm.style.display = 'block';
+    loginForm.style.display = 'none';
+  });
 
-/* ---------- SET TEXT ---------- */
-function setText(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
+  loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = loginForm.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px;"></span> Connexion...';
+    btn.disabled = true;
 
-/* ============================================================
-   DASHBOARD — Vue d'ensemble
-   ============================================================ */
-async function loadDashboard() {
-  try {
-    const [statsRes, botRes] = await Promise.all([
-      apiGet('/api/stats'),
-      apiGet('/api/bot/stats').catch(() => ({ ok: false }))
-    ]);
-
-    // Stats principales — gère plusieurs formats de réponse
-    const stats = statsRes.ok ? (statsRes.stats || statsRes.data || statsRes) : {};
-    setText('stat-users', stats.users ?? stats.inscrits_ngd ?? stats.total_users ?? 0);
-    setText('stat-campaigns', stats.campaigns ?? stats.total_campaigns ?? 0);
-    setText('stat-orders', stats.orders ?? stats.commandes_tcl ?? stats.total_orders ?? 0);
-    setText('stat-revenue', fmtFCFA(stats.revenue ?? stats.total_revenue ?? 0));
-    setText('stat-groups', stats.active_groups ?? stats.groupes_coalition ?? 0);
-    setText('stat-pending', stats.pending_withdrawals ?? stats.retraits_en_attente ?? 0);
-
-    // Stats Bot
-    let botData = {};
-    if (botRes.ok) {
-      botData = botRes.latest ?? botRes.stats ?? botRes.data ?? botRes ?? {};
+    try {
+      const phone = $('#login-phone').value.trim();
+      const pin = $('#login-pin').value;
+      await login(phone, pin);
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      showAlert(err.message, 'error', $('.auth-container'));
+      btn.innerHTML = originalText;
+      btn.disabled = false;
     }
-    setText('bot-conversations', botData.conversations ?? 0);
-    setText('bot-active', botData.active ?? botData.messages ?? 0);
-    setText('bot-leads', botData.leads ?? 0);
-    setText('bot-conversions', botData.conversions ?? 0);
-    setText('bot-messages', botData.messages ?? 0);
-    setText('week-leads', botData.leads ?? 0);
-    setText('week-conversions', botData.conversions ?? 0);
-    setText('week-messages', botData.messages ?? 0);
-    setText('bot-last-update', botRes.ok ? 'À l'instant' : '—');
+  });
 
-    // Graphique
-    renderBotChart(botRes.week ?? botRes.history ?? botData.history ?? []);
+  registerForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = registerForm.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px;"></span> Création...';
+    btn.disabled = true;
 
-    // Coalition
-    const groups = stats.active_groups ?? stats.groupes_coalition ?? 0;
-    setText('coalition-progress', groups + ' / 232 groupes créés');
-    const bar = document.getElementById('coalition-bar');
-    if (bar) bar.style.width = Math.min((groups / 232) * 100, 100) + '%';
-
-  } catch (e) {
-    console.error('Dashboard load error:', e);
-    showToast('Erreur chargement dashboard', 'error');
-  }
-}
-
-/* ---------- CHART ---------- */
-let botChartInstance = null;
-function renderBotChart(data) {
-  const ctx = document.getElementById('botChart');
-  if (!ctx) return;
-  if (botChartInstance) { botChartInstance.destroy(); botChartInstance = null; }
-
-  const labels = [];
-  const values = [];
-  if (Array.isArray(data) && data.length) {
-    data.forEach(d => {
-      labels.push(d.date ?? d.day ?? '?');
-      values.push(d.messages ?? d.count ?? 0);
-    });
-  } else {
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      labels.push(d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }));
-      values.push(0);
-    }
-  }
-
-  botChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Messages Bot (7j)',
-        data: values,
-        borderColor: '#22c55e',
-        backgroundColor: 'rgba(34,197,94,0.1)',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-        x: { grid: { display: false } }
-      }
+    try {
+      const data = {
+        phone: $('#reg-phone').value.trim(),
+        first_name: $('#reg-firstname').value.trim(),
+        last_name: $('#reg-lastname').value.trim(),
+        email: $('#reg-email').value.trim() || null,
+        pin: $('#reg-pin').value,
+        profile_type: $('#reg-profile').value,
+        region: $('#reg-region').value.trim() || null,
+        commune: $('#reg-commune').value.trim() || null
+      };
+      await register(data);
+      showAlert('Compte créé avec succès ! Connectez-vous.', 'success', $('.auth-container'));
+      loginTab.click();
+      registerForm.reset();
+    } catch (err) {
+      showAlert(err.message, 'error', $('.auth-container'));
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
     }
   });
 }
 
-/* ============================================================
-   CAMPAGNES
-   ============================================================ */
-async function loadCampaigns() {
-  try {
-    const res = await apiGet('/api/campaigns');
-    const tbody = document.getElementById('campaigns-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+// ============================================================
+// DASHBOARD PAGE LOGIC
+// ============================================================
+let botChartInstance = null;
 
-    const campaigns = res.campaigns ?? res.data ?? [];
-    if (!res.ok || !campaigns.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#888;">Aucune campagne</td></tr>';
+function initDashboardPage() {
+  if (!getToken()) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  loadUserInfo();
+  setupNavigation();
+  setupGlobalListeners();
+  loadSection('overview');
+}
+
+function setupGlobalListeners() {
+  // Mobile menu
+  $('#mobile-menu-toggle')?.addEventListener('click', () => {
+    $('.sidebar').classList.add('open');
+    $('#sidebar-overlay').classList.add('active');
+  });
+
+  // Sidebar overlay
+  $('#sidebar-overlay')?.addEventListener('click', () => {
+    $('.sidebar').classList.remove('open');
+    $('#sidebar-overlay').classList.remove('active');
+  });
+
+  // Desktop logout
+  $('#logout-btn-desktop')?.addEventListener('click', logout);
+
+  // Mobile logout
+  $('#logout-btn')?.addEventListener('click', logout);
+
+  // Refresh
+  $('#refresh-btn')?.addEventListener('click', () => {
+    const section = $('.nav-item.active')?.dataset.section || 'overview';
+    loadSection(section);
+    showToast('Données actualisées', 'success');
+  });
+
+  // Bottom nav
+  $$('.bottom-nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const section = item.dataset.section;
+      if (!section) return;
+
+      $$('.nav-item').forEach(n => n.classList.remove('active'));
+      const sidebarItem = $(`.nav-item[data-section="${section}"]`);
+      if (sidebarItem) sidebarItem.classList.add('active');
+
+      $$('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+      item.classList.add('active');
+
+      loadSection(section);
+    });
+  });
+
+  // Campaign create button
+  $('#btn-create-campaign')?.addEventListener('click', showCreateCampaignModal);
+
+  // Modal campaign cancel
+  $('#modal-campaign-cancel')?.addEventListener('click', () => {
+    $('#modal-campaign-overlay').classList.remove('active');
+  });
+
+  // Modal campaign close
+  $('#modal-campaign-close')?.addEventListener('click', () => {
+    $('#modal-campaign-overlay').classList.remove('active');
+  });
+
+  // Modal payment close
+  $('#modal-payment-close')?.addEventListener('click', () => {
+    $('#modal-payment-overlay').classList.remove('active');
+  });
+
+  // Profile form
+  $('#form-profile')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newPin = $('#prof-new-pin').value;
+    const confirmPin = $('#prof-confirm-pin').value;
+    if (newPin && newPin !== confirmPin) {
+      showToast('Les PIN ne correspondent pas', 'error');
       return;
     }
+    // TODO: PATCH /api/v1/users/me
+    showToast('Profil mis à jour (simulation)', 'success');
+  });
 
-    campaigns.forEach(c => {
-      const tr = document.createElement('tr');
-      const cid = c.id ?? c.campaign_id ?? '';
-      tr.innerHTML = `
-        <td><strong>${escapeHtml(c.name ?? c.nom ?? '—')}</strong></td>
-        <td>${escapeHtml(c.type ?? '—')}</td>
-        <td>${escapeHtml(c.region ?? '—')}</td>
-        <td>${fmtDate(c.date ?? c.created_at)}</td>
-        <td><span class="badge ${(c.status ?? c.statut) === 'active' ? 'badge-green' : 'badge-gray'}">${c.status ?? c.statut ?? '—'}</span></td>
-        <td>${fmtFCFA(c.price ?? c.budget ?? 0)}</td>
-        <td>
-          <button class="btn-icon" onclick="openEditCampaign('${cid}')" title="Modifier">✏️</button>
-          <button class="btn-icon" onclick="viewCampaign('${cid}')" title="Voir">👁️</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
+  // Campaign filter
+  $('#camp-filter-apply')?.addEventListener('click', () => {
+    loadCampaigns();
+  });
+
+  // Export buttons
+  $$('[data-export]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      showToast(`Export ${btn.dataset.export} — bientôt disponible`, 'info');
     });
-  } catch (e) {
-    console.error('Campaigns load error:', e);
-    showToast('Erreur chargement campagnes', 'error');
-  }
+  });
 }
 
-async function createCampaign() {
-  const name = document.getElementById('camp-name')?.value.trim();
-  const type = document.getElementById('camp-type')?.value;
-  const region = document.getElementById('camp-region')?.value.trim();
-  const budget = parseInt(document.getElementById('camp-budget')?.value || 0);
-
-  if (!name) { showToast('Nom de campagne requis', 'error'); return; }
-
-  const res = await apiPost('/api/campaigns', { name, type, region, budget, status: 'active' });
-  if (res.ok) {
-    showToast('Campagne créée !', 'success');
-    closeModal('modal-new-campaign');
-    document.getElementById('camp-name').value = '';
-    document.getElementById('camp-region').value = '';
-    document.getElementById('camp-budget').value = '';
-    loadCampaigns();
-    loadDashboard();
-  } else {
-    showToast(res.error ?? 'Erreur création', 'error');
-  }
-}
-
-async function openEditCampaign(id) {
+async function loadUserInfo() {
   try {
-    const res = await apiGet('/api/campaigns?id=' + encodeURIComponent(id));
-    const c = res.campaign ?? res.campaigns?.[0];
-    if (!c) { showToast('Campagne introuvable', 'error'); return; }
+    const user = await getMe();
+    setUser(user);
+    const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
 
-    document.getElementById('edit-camp-id').value = c.id ?? c.campaign_id ?? id;
-    document.getElementById('edit-camp-name').value = c.name ?? c.nom ?? '';
-    document.getElementById('edit-camp-type').value = c.type ?? '';
-    document.getElementById('edit-camp-region').value = c.region ?? '';
-    document.getElementById('edit-camp-budget').value = c.price ?? c.budget ?? 0;
-    document.getElementById('edit-camp-status').value = c.status ?? c.statut ?? 'active';
+    // Mobile header
+    const mobileAvatar = $('#mobile-avatar');
+    if (mobileAvatar) mobileAvatar.textContent = initials || 'U';
 
-    openModal('modal-edit-campaign');
-  } catch (e) {
-    showToast('Erreur chargement campagne', 'error');
+    // Sidebar
+    const sidebarAvatar = $('#sidebar-avatar');
+    if (sidebarAvatar) sidebarAvatar.textContent = initials || 'U';
+
+    const sidebarName = $('#sidebar-name');
+    if (sidebarName) sidebarName.textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.phone;
+
+    const sidebarRole = $('#sidebar-role');
+    if (sidebarRole) sidebarRole.textContent = user.role || 'Utilisateur';
+
+    // Admin permissions
+    if (user.role === 'admin') {
+      const navUsers = $('#nav-users');
+      const navOrders = $('#nav-orders');
+      const bottomOrders = $('#bottom-nav-orders');
+      if (navUsers) { navUsers.style.display = 'flex'; navUsers.style.removeProperty('display'); }
+      if (navOrders) { navOrders.style.display = 'flex'; navOrders.style.removeProperty('display'); }
+      if (bottomOrders) { bottomOrders.style.display = 'flex'; bottomOrders.style.removeProperty('display'); }
+    }
+  } catch {
+    logout();
   }
 }
 
-async function saveEditCampaign() {
-  const id = document.getElementById('edit-camp-id')?.value;
-  const body = {
-    name: document.getElementById('edit-camp-name')?.value.trim(),
-    type: document.getElementById('edit-camp-type')?.value,
-    region: document.getElementById('edit-camp-region')?.value.trim(),
-    budget: parseInt(document.getElementById('edit-camp-budget')?.value || 0),
-    status: document.getElementById('edit-camp-status')?.value
+function setupNavigation() {
+  $$('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      $$('.nav-item').forEach(n => n.classList.remove('active'));
+      item.classList.add('active');
+
+      const section = item.dataset.section;
+      $$('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+      const bottomItem = $(`.bottom-nav-item[data-section="${section}"]`);
+      if (bottomItem) bottomItem.classList.add('active');
+
+      loadSection(section);
+      if (window.innerWidth <= 768) {
+        $('.sidebar').classList.remove('open');
+        $('#sidebar-overlay').classList.remove('active');
+      }
+    });
+  });
+}
+
+function loadSection(sectionName) {
+  $$('.section').forEach(s => s.classList.remove('active'));
+  $(`#section-${sectionName}`)?.classList.add('active');
+
+  const titleEl = $('.topbar h1');
+  if (titleEl) titleEl.textContent = getSectionTitle(sectionName);
+
+  switch (sectionName) {
+    case 'overview': loadOverview(); break;
+    case 'campaigns': loadCampaigns(); break;
+    case 'users': loadUsers(); break;
+    case 'orders': loadOrders(); break;
+    case 'profile': loadProfile(); break;
+  }
+}
+
+function getSectionTitle(name) {
+  const titles = {
+    overview: '📊 Vue d\'ensemble',
+    campaigns: '📢 Campagnes',
+    users: '👥 Utilisateurs',
+    orders: '🛒 Commandes TCL',
+    profile: '👤 Mon Profil'
   };
-  const res = await apiPut('/api/campaigns?id=' + encodeURIComponent(id), body);
-  if (res.ok) {
-    showToast('Campagne mise à jour', 'success');
-    closeModal('modal-edit-campaign');
-    loadCampaigns();
-  } else {
-    showToast(res.error ?? 'Erreur mise à jour', 'error');
+  return titles[name] || 'Coalition 509';
+}
+
+// ============================================================
+// OVERVIEW SECTION
+// ============================================================
+async function loadOverview() {
+  const container = $('#overview-stats');
+  container.innerHTML = '<div class="loading"><span class="spinner"></span> Chargement des statistiques...</div>';
+
+  try {
+    const stats = await getDashboardStats();
+
+    // API status
+    const apiStatus = $('#api-status');
+    if (apiStatus) {
+      apiStatus.textContent = '● API CONNECTÉE';
+      apiStatus.className = 'badge badge-success';
+    }
+
+    // Coalition progress
+    const progressEl = $('#coalition-progress');
+    const progressText = $('#coalition-text');
+    if (progressEl && stats.total_groups !== undefined) {
+      const pct = Math.min((stats.total_groups / 232) * 100, 100);
+      progressEl.style.width = pct + '%';
+      if (progressText) progressText.textContent = `${stats.total_groups} / 232 groupes créés`;
+    }
+
+    container.innerHTML = `
+      ${renderStatCard({
+        value: formatNumber(stats.total_users),
+        label: 'Utilisateurs actifs',
+        icon: '👥',
+        type: 'primary'
+      })}
+      ${renderStatCard({
+        value: formatNumber(stats.total_campaigns),
+        label: 'Campagnes actives',
+        icon: '📢',
+        type: 'success'
+      })}
+      ${renderStatCard({
+        value: formatNumber(stats.total_orders),
+        label: 'Commandes TCL',
+        icon: '🛒',
+        type: 'warning'
+      })}
+      ${renderStatCard({
+        value: formatCurrency(stats.total_revenue),
+        label: 'Revenus totaux',
+        icon: '💰',
+        type: 'accent'
+      })}
+      ${renderStatCard({
+        value: formatNumber(stats.total_groups),
+        label: 'Coalitions actives',
+        icon: '🤝',
+        type: 'info'
+      })}
+      ${renderStatCard({
+        value: formatNumber(stats.pending_withdrawals),
+        label: 'Retraits en attente',
+        icon: '⏳',
+        type: 'danger'
+      })}
+    `;
+  } catch (err) {
+    container.innerHTML = `<div class="alert alert-error">Impossible de charger les statistiques : ${err.message}</div>`;
+    const apiStatus = $('#api-status');
+    if (apiStatus) {
+      apiStatus.textContent = '● API DÉCONNECTÉE';
+      apiStatus.className = 'badge badge-danger';
+    }
+  }
+
+  loadBotStats();
+}
+
+// ============================================================
+// BOT STATS
+// ============================================================
+async function loadBotStats() {
+  try {
+    const data = await api('/api/v1/bot/stats');
+    const latest = data.latest || {};
+    const week = data.week || {};
+
+    const setText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = formatNumber(val);
+    };
+
+    setText('bot-conversations', latest.conversations);
+    setText('bot-active', latest.active);
+    setText('bot-leads', latest.leads);
+    setText('bot-conversions', latest.conversions);
+    setText('bot-messages', latest.messages);
+
+    setText('bot-week-leads', week.leads);
+    setText('bot-week-conversions', week.conversions);
+    setText('bot-week-messages', week.messages);
+
+    const lastUpdate = $('#bot-last-update');
+    if (lastUpdate) lastUpdate.textContent = new Date().toLocaleString('fr-FR');
+
+    // Chart
+    const ctx = document.getElementById('bot-stats-chart');
+    if (!ctx) return;
+
+    if (botChartInstance) {
+      botChartInstance.destroy();
+      botChartInstance = null;
+    }
+
+    const labels = data.chart_labels || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const conversationsData = data.chart_conversations || [0,0,0,0,0,0,0];
+    const leadsData = data.chart_leads || [0,0,0,0,0,0,0];
+
+    botChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Conversations',
+            data: conversationsData,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.1)',
+            tension: 0.4,
+            fill: true
+          },
+          {
+            label: 'Leads',
+            data: leadsData,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.1)',
+            tension: 0.4,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+
+    const errEl = $('#bot-stats-error');
+    if (errEl) errEl.textContent = '';
+  } catch (err) {
+    console.error('Bot stats error:', err);
+    const errEl = $('#bot-stats-error');
+    if (errEl) errEl.textContent = 'Stats bot indisponibles : ' + err.message;
   }
 }
+
+// ============================================================
+// CAMPAIGNS SECTION
+// ============================================================
+async function loadCampaigns() {
+  const tbody = $('#campaigns-table-body');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
+
+  try {
+    const params = {};
+    const search = $('#camp-filter-search')?.value?.trim();
+    const status = $('#camp-filter-status')?.value;
+    const region = $('#camp-filter-region')?.value?.trim();
+    if (search) params.search = search;
+    if (status) params.status = status;
+    if (region) params.region = region;
+
+    const campaigns = await listCampaigns(params);
+    if (!campaigns || campaigns.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucune campagne trouvée</td></tr>';
+      return;
+    }
+    tbody.innerHTML = campaigns.map(c => `
+      <tr>
+        <td><strong>${c.name}</strong><br><small style="color:#666">${c.slug || ''}</small></td>
+        <td>${c.election_type || '—'}</td>
+        <td>${c.region || '—'}${c.commune ? `, ${c.commune}` : ''}</td>
+        <td>${c.election_date ? formatDate(c.election_date) : '—'}</td>
+        <td>${renderBadge(c.status === 'active' ? 'Active' : c.status, c.status === 'active' ? 'success' : 'warning')}</td>
+        <td>${formatCurrency(c.price)}</td>
+        <td style="text-align:right"><button class="btn btn-sm btn-secondary" onclick="viewCampaign('${c.id}')">Détails</button></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="alert alert-error">${err.message}</td></tr>`;
+  }
+}
+
+function showCreateCampaignModal() {
+  const modal = $('#modal-campaign-overlay');
+  const form = $('#form-campaign');
+  if (form) form.reset();
+  modal.classList.add('active');
+}
+
+// Attach campaign form submit once
+document.addEventListener('DOMContentLoaded', () => {
+  const form = $('#form-campaign');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button[type="submit"]');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px;"></span> Création...';
+
+      try {
+        await createCampaign({
+          name: $('#camp-name').value.trim(),
+          election_type: $('#camp-type').value,
+          region: $('#camp-region').value.trim(),
+          commune: $('#camp-commune').value.trim() || null,
+          election_date: $('#camp-date').value || null,
+          description: $('#camp-desc').value.trim() || null,
+          price: parseInt($('#camp-price').value || '0', 10),
+          pricing_model: $('#camp-pricing').value
+        });
+        $('#modal-campaign-overlay').classList.remove('active');
+        showToast('Campagne créée avec succès !', 'success');
+        loadCampaigns();
+      } catch (err) {
+        showAlert(err.message, 'error', form);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    });
+  }
+});
 
 function viewCampaign(id) {
-  showToast('Détail campagne — ID: ' + id, 'info');
+  showToast(`Détails de la campagne ${id} — bientôt disponible`, 'info');
 }
 
-/* ============================================================
-   COMMANDES TCL
-   ============================================================ */
-async function loadOrders() {
-  try {
-    const res = await apiGet('/api/orders');
-    const tbody = document.getElementById('orders-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    const orders = res.orders ?? res.data ?? [];
-    if (!res.ok || !orders.length) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#888;">Aucune commande</td></tr>';
-      return;
-    }
-
-    orders.forEach(o => {
-      const isPaid = (o.payment_status ?? o.statut_paiement) === 'paid' || (o.status ?? o.statut) === 'completed';
-      const oid = o.id ?? o.id_commande ?? '';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${escapeHtml(o.ref ?? oid ?? '#CMD-?')}</strong></td>
-        <td>${escapeHtml(o.client ?? o.nom_complet ?? '—')}<br><small>${escapeHtml(o.telephone ?? '')}</small></td>
-        <td>${fmtFCFA(o.amount ?? o.montant ?? 0)}</td>
-        <td>${escapeHtml(o.region ?? '—')}</td>
-        <td><span class="badge ${isPaid ? 'badge-green' : 'badge-orange'}">${escapeHtml(o.status ?? o.statut ?? 'pending')}</span></td>
-        <td><span class="badge ${isPaid ? 'badge-green' : 'badge-gray'}">${isPaid ? 'Payé' : 'En attente'}</span></td>
-        <td>${fmtDate(o.date ?? o.created_at)}</td>
-        <td>
-          ${isPaid
-            ? '<span class="badge badge-green">✓ Payé</span>'
-            : `<button class="btn-pay" onclick="payOrder('${oid}')">💳 Payer</button>`}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  } catch (e) {
-    console.error('Orders load error:', e);
-  }
-}
-
-function payOrder(id) {
-  openModal('modal-pay-order');
-  document.getElementById('pay-order-id').value = id;
-}
-
-async function confirmPayOrder() {
-  const id = document.getElementById('pay-order-id')?.value;
-  const method = document.getElementById('pay-method')?.value;
-  const res = await apiPost('/api/orders/pay', { id, method });
-  if (res.ok) {
-    showToast('Paiement confirmé', 'success');
-    closeModal('modal-pay-order');
-    loadOrders();
-    loadDashboard();
-  } else {
-    showToast(res.error ?? 'Erreur paiement', 'error');
-  }
-}
-
-/* ============================================================
-   UTILISATEURS
-   ============================================================ */
+// ============================================================
+// USERS SECTION
+// ============================================================
 async function loadUsers() {
-  try {
-    const res = await apiGet('/api/users');
-    const tbody = document.getElementById('users-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+  const tbody = $('#users-table-body');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
 
-    const users = res.users ?? res.data ?? [];
-    if (!res.ok || !users.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#888;">Aucun utilisateur</td></tr>';
+  try {
+    const users = await listUsers({ limit: 50 });
+    if (!users || users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucun utilisateur trouvé</td></tr>';
       return;
     }
-
-    users.forEach(u => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${escapeHtml(u.prenom ?? u.first_name ?? '—')} ${escapeHtml(u.nom ?? u.last_name ?? '')}</strong></td>
-        <td>${escapeHtml(u.telephone ?? u.phone ?? '—')}</td>
-        <td>${escapeHtml(u.email ?? '—')}</td>
-        <td>${escapeHtml(u.region ?? '—')}</td>
-        <td><span class="badge ${u.role === 'admin' ? 'badge-purple' : 'badge-blue'}">${escapeHtml(u.role ?? u.profil ?? 'User')}</span></td>
-        <td>${fmtDate(u.created_at)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  } catch (e) {
-    console.error('Users load error:', e);
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td><strong>${u.first_name || ''} ${u.last_name || ''}</strong><br><small style="color:#666">${u.ngd_id || '—'}</small></td>
+        <td>${u.phone}</td>
+        <td>${u.email || '—'}</td>
+        <td>${u.profile_type || '—'}</td>
+        <td>${u.region || '—'}</td>
+        <td>${renderBadge(u.status === 'active' ? 'Actif' : u.status, u.status === 'active' ? 'success' : 'danger')}</td>
+        <td>${formatDate(u.created_at)}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="alert alert-error">${err.message}</td></tr>`;
   }
 }
 
-/* ============================================================
-   PROFIL
-   ============================================================ */
-async function loadProfile() {
+// ============================================================
+// ORDERS SECTION
+// ============================================================
+async function loadOrders() {
+  const tbody = $('#orders-table-body');
+  tbody.innerHTML = '<tr><td colspan="8" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
+
+  try {
+    const orders = await getOrders({ limit: 50 });
+    if (!orders || orders.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#666">Aucune commande trouvée</td></tr>';
+      return;
+    }
+    tbody.innerHTML = orders.map(o => `
+      <tr>
+        <td><strong>#${o.order_number}</strong></td>
+        <td>${o.user?.first_name || ''} ${o.user?.last_name || ''}<br><small>${o.user?.phone || ''}</small></td>
+        <td>${formatCurrency(o.total_amount)}</td>
+        <td>${o.region || '—'}${o.commune ? `, ${o.commune}` : ''}</td>
+        <td>${renderBadge(o.status === 'pending' ? 'En attente' : o.status, o.status === 'pending' ? 'warning' : 'success')}</td>
+        <td>${renderBadge(o.payment_status === 'paid' ? 'Payé' : o.payment_status || 'En attente', o.payment_status === 'paid' ? 'success' : 'warning')}</td>
+        <td>${formatDate(o.created_at)}</td>
+        <td style="text-align:right"><button class="btn btn-sm btn-primary" onclick="showPaymentModal('${o.id}', ${o.total_amount || 0})">Payer</button></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="alert alert-error">${err.message}</td></tr>`;
+  }
+}
+
+function showPaymentModal(orderId, amount) {
+  const modal = $('#modal-payment-overlay');
+  $('#pay-order-id').value = orderId || '';
+  $('#pay-amount').textContent = formatCurrency(amount);
+  modal.classList.add('active');
+}
+
+// ============================================================
+// PROFILE SECTION
+// ============================================================
+function loadProfile() {
   const user = getUser();
-  const name = (user.prenom ?? user.first_name ?? '') + ' ' + (user.nom ?? user.last_name ?? '');
-  setText('profile-name', name.trim() || '—');
-  setText('profile-role', user.role ?? user.profil ?? 'Utilisateur');
-  setText('profile-id', user.id_ngd ?? user.id ?? '—');
-  setText('profile-phone', user.telephone ?? user.phone ?? '—');
-  setText('profile-email', user.email ?? '—');
-  setText('profile-region', user.region ?? '—');
-  setText('profile-commune', user.commune ?? '—');
+  if (!user || !user.id) return;
 
-  // Sidebar
-  setText('sidebar-name', user.prenom ?? user.first_name ?? 'Utilisateur');
-  setText('sidebar-role', user.role ?? user.profil ?? 'Membre');
+  const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
 
-  // Pré-remplir formulaire
-  const p = document.getElementById('edit-prenom');
-  if (p) p.value = user.prenom ?? user.first_name ?? '';
-  const n = document.getElementById('edit-nom');
-  if (n) n.value = user.nom ?? user.last_name ?? '';
-  const t = document.getElementById('edit-telephone');
-  if (t) t.value = user.telephone ?? user.phone ?? '';
-  const e = document.getElementById('edit-email');
-  if (e) e.value = user.email ?? '';
-  const r = document.getElementById('edit-region');
-  if (r) r.value = user.region ?? '';
-  const c = document.getElementById('edit-commune');
-  if (c) c.value = user.commune ?? '';
-}
-
-async function saveProfile() {
-  const body = {
-    prenom: document.getElementById('edit-prenom')?.value.trim(),
-    nom: document.getElementById('edit-nom')?.value.trim(),
-    telephone: document.getElementById('edit-telephone')?.value.trim(),
-    email: document.getElementById('edit-email')?.value.trim(),
-    region: document.getElementById('edit-region')?.value.trim(),
-    commune: document.getElementById('edit-commune')?.value.trim()
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val || '—';
   };
-  const pin1 = document.getElementById('edit-pin')?.value;
-  const pin2 = document.getElementById('edit-pin-confirm')?.value;
-  if (pin1 && pin1 !== pin2) { showToast('PINs différents', 'error'); return; }
-  if (pin1) body.pin = pin1;
 
-  const res = await apiPost('/api/auth/me', body);
-  if (res.ok) {
-    showToast('Profil mis à jour', 'success');
-    localStorage.setItem('user', JSON.stringify({ ...getUser(), ...body }));
-    loadProfile();
-  } else {
-    showToast(res.error ?? 'Erreur', 'error');
-  }
+  const avatar = $('#profile-avatar');
+  if (avatar) avatar.textContent = initials || 'U';
+
+  const name = $('#profile-name');
+  if (name) name.textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.phone;
+
+  const role = $('#profile-role');
+  if (role) role.textContent = user.role || 'Utilisateur';
+
+  setText('prof-display-ngd', user.ngd_id);
+  setText('prof-display-name', `${user.first_name || ''} ${user.last_name || ''}`.trim());
+  setText('prof-display-phone', user.phone);
+  setText('prof-display-email', user.email);
+  setText('prof-display-region', user.region);
+  setText('prof-display-commune', user.commune);
+  setText('prof-display-role', user.role);
+  setText('prof-display-profile', user.profile_type);
+
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val || '';
+  };
+
+  setVal('prof-first-name', user.first_name);
+  setVal('prof-last-name', user.last_name);
+  setVal('prof-phone', user.phone);
+  setVal('prof-email', user.email);
+  setVal('prof-region-input', user.region);
+  setVal('prof-commune-input', user.commune);
 }
 
-/* ============================================================
-   CSV EXPORT
-   ============================================================ */
-function exportCSV(filename, rows) {
-  if (!rows || !rows.length) { showToast('Aucune donnée à exporter', 'error'); return; }
-  const headers = Object.keys(rows[0]);
-  const csv = [headers.join(';')];
-  rows.forEach(r => {
-    csv.push(headers.map(h => '"' + String(r[h] ?? '').replace(/"/g, '""') + '"').join(';'));
-  });
-  const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  link.click();
-}
-
-async function exportCampaignsCSV() {
-  const res = await apiGet('/api/campaigns');
-  const data = res.campaigns ?? res.data ?? [];
-  if (res.ok && data.length) exportCSV('campagnes.csv', data);
-  else showToast('Aucune donnée', 'error');
-}
-async function exportOrdersCSV() {
-  const res = await apiGet('/api/orders');
-  const data = res.orders ?? res.data ?? [];
-  if (res.ok && data.length) exportCSV('commandes.csv', data);
-  else showToast('Aucune donnée', 'error');
-}
-async function exportUsersCSV() {
-  const res = await apiGet('/api/users');
-  const data = res.users ?? res.data ?? [];
-  if (res.ok && data.length) exportCSV('utilisateurs.csv', data);
-  else showToast('Aucune donnée', 'error');
-}
-
-/* ============================================================
-   MOBILE NAV
-   ============================================================ */
-function toggleMobileMenu() {
-  const nav = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebar-overlay');
-  if (nav) nav.classList.toggle('open');
-  if (overlay) overlay.classList.toggle('open');
-}
-function closeMobileMenu() {
-  const nav = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebar-overlay');
-  if (nav) nav.classList.remove('open');
-  if (overlay) overlay.classList.remove('open');
-}
-
-/* ============================================================
-   INIT
-   ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  // Auth check
-  if (!getToken()) { window.location.href = 'index.html'; return; }
-
-  // Header buttons
-  document.getElementById('btn-refresh')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showToast('Actualisation...', 'info');
-    loadDashboard();
-    loadCampaigns();
-    loadOrders();
-    loadUsers();
-  });
-
-  document.getElementById('btn-logout')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    logout();
-  });
-
-  document.getElementById('btn-logout-sidebar')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    logout();
-  });
-
-  // Sidebar nav — preventDefault sur les <a>
-  document.getElementById('nav-dashboard')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('dashboard-section');
-    closeMobileMenu();
-    loadDashboard();
-  });
-  document.getElementById('nav-campaigns')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('campaigns-section');
-    closeMobileMenu();
-    loadCampaigns();
-  });
-  document.getElementById('nav-users')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('users-section');
-    closeMobileMenu();
-    loadUsers();
-  });
-  document.getElementById('nav-orders')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('orders-section');
-    closeMobileMenu();
-    loadOrders();
-  });
-  document.getElementById('nav-profile')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('profile-section');
-    closeMobileMenu();
-    loadProfile();
-  });
-
-  // Mobile bottom nav
-  document.getElementById('mob-nav-dashboard')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('dashboard-section');
-    loadDashboard();
-  });
-  document.getElementById('mob-nav-campaigns')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('campaigns-section');
-    loadCampaigns();
-  });
-  document.getElementById('mob-nav-profile')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showSection('profile-section');
-    loadProfile();
-  });
-
-  // Burger
-  document.getElementById('menu-toggle')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    toggleMobileMenu();
-  });
-
-  // Modals — close on backdrop
-  document.querySelectorAll('.modal-overlay').forEach(m => {
-    m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
-  });
-
-  // Modal buttons
-  document.getElementById('btn-new-campaign')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    openModal('modal-new-campaign');
-  });
-  document.getElementById('btn-save-campaign')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    createCampaign();
-  });
-  document.getElementById('btn-save-edit-campaign')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    saveEditCampaign();
-  });
-  document.getElementById('btn-confirm-pay')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    confirmPayOrder();
-  });
-  document.getElementById('btn-save-profile')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    saveProfile();
-  });
-
-  // CSV
-  document.getElementById('csv-campaigns')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    exportCampaignsCSV();
-  });
-  document.getElementById('csv-orders')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    exportOrdersCSV();
-  });
-  document.getElementById('csv-users')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    exportUsersCSV();
-  });
-
-  // Chargement initial
-  loadDashboard();
-  loadCampaigns();
-  loadOrders();
-  loadUsers();
-  loadProfile();
-});
+// ============================================================
+// API URL CONFIG (debug)
+// ============================================================
+window.setApiUrl = function(url) {
+  localStorage.setItem('api_url', url);
+  location.reload();
+};
