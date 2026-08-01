@@ -245,7 +245,31 @@ function initAuthPage() {
   const registerTab = $('#tab-register');
   const loginForm = $('#login-form');
   const registerForm = $('#register-form');
+  const modeUser = $('#mode-user');
+  const modeAdmin = $('#mode-admin');
+  const adminHint = $('#admin-hint');
+  const tabsContainer = $('.tabs');
 
+  // Mode switcher
+  modeUser?.addEventListener('click', () => {
+    modeUser.classList.add('active');
+    modeAdmin.classList.remove('active');
+    adminHint?.classList.remove('visible');
+    if (tabsContainer) tabsContainer.style.display = 'flex';
+  });
+
+  modeAdmin?.addEventListener('click', () => {
+    modeAdmin.classList.add('active');
+    modeUser.classList.remove('active');
+    adminHint?.classList.add('visible');
+    if (tabsContainer) tabsContainer.style.display = 'none';
+    loginTab?.classList.add('active');
+    registerTab?.classList.remove('active');
+    if (loginForm) loginForm.style.display = 'block';
+    if (registerForm) registerForm.style.display = 'none';
+  });
+
+  // Tabs
   loginTab?.addEventListener('click', () => {
     loginTab.classList.add('active');
     registerTab.classList.remove('active');
@@ -273,7 +297,7 @@ function initAuthPage() {
       await login(phone, pin);
       window.location.href = 'dashboard.html';
     } catch (err) {
-      showAlert(err.message, 'error', $('.auth-container'));
+      showAlert(err.message, 'error', $('#auth-container'));
       btn.innerHTML = originalText;
       btn.disabled = false;
     }
@@ -281,6 +305,13 @@ function initAuthPage() {
 
   registerForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const pin = $('#reg-pin').value;
+    const pinConfirm = $('#reg-pin-confirm').value;
+    if (pin !== pinConfirm) {
+      showAlert('Les codes PIN ne correspondent pas.', 'error', $('#auth-container'));
+      return;
+    }
+
     const btn = registerForm.querySelector('button[type="submit"]');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px;"></span> Création...';
@@ -292,17 +323,17 @@ function initAuthPage() {
         first_name: $('#reg-firstname').value.trim(),
         last_name: $('#reg-lastname').value.trim(),
         email: $('#reg-email').value.trim() || null,
-        pin: $('#reg-pin').value,
+        pin: pin,
         profile_type: $('#reg-profile').value,
         region: $('#reg-region').value.trim() || null,
         commune: $('#reg-commune').value.trim() || null
       };
       await register(data);
-      showAlert('Compte créé avec succès ! Connectez-vous.', 'success', $('.auth-container'));
+      showAlert('Compte créé avec succès ! Connectez-vous.', 'success', $('#auth-container'));
       loginTab.click();
       registerForm.reset();
     } catch (err) {
-      showAlert(err.message, 'error', $('.auth-container'));
+      showAlert(err.message, 'error', $('#auth-container'));
     } finally {
       btn.innerHTML = originalText;
       btn.disabled = false;
