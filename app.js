@@ -1,7 +1,6 @@
 /* ============================================================
-   Coalition 509 SaaS — Frontend v1.5.9
-   Corrections : modals TCL/Campagnes, Stats Bot, Déconnexion,
-   Actualiser, responsive mobile
+   Coalition 509 SaaS — Frontend v1.5.9-fix
+   Routes API corrigées · Nav fonctionnelle · Modals OK
    ============================================================ */
 
 const API_URL = 'https://coalition509-api.onrender.com';
@@ -28,29 +27,55 @@ function fmtDate(d) {
   const date = new Date(d);
   return date.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
 }
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
 /* ---------- API ---------- */
 async function apiGet(path) {
-  const res = await fetch(API_URL + path, {
-    headers: { 'Authorization': 'Bearer ' + getToken() }
-  });
-  return res.json();
+  try {
+    const res = await fetch(API_URL + path, {
+      headers: { 'Authorization': 'Bearer ' + getToken() }
+    });
+    const json = await res.json();
+    console.log('[API GET]', path, json);
+    return json;
+  } catch (e) {
+    console.error('[API GET ERROR]', path, e.message);
+    return { ok: false, error: e.message };
+  }
 }
 async function apiPost(path, body) {
-  const res = await fetch(API_URL + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-    body: JSON.stringify(body)
-  });
-  return res.json();
+  try {
+    const res = await fetch(API_URL + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    console.log('[API POST]', path, json);
+    return json;
+  } catch (e) {
+    console.error('[API POST ERROR]', path, e.message);
+    return { ok: false, error: e.message };
+  }
 }
 async function apiPut(path, body) {
-  const res = await fetch(API_URL + path, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-    body: JSON.stringify(body)
-  });
-  return res.json();
+  try {
+    const res = await fetch(API_URL + path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    console.log('[API PUT]', path, json);
+    return json;
+  } catch (e) {
+    console.error('[API PUT ERROR]', path, e.message);
+    return { ok: false, error: e.message };
+  }
 }
 
 /* ---------- NAVIGATION ---------- */
@@ -58,16 +83,32 @@ function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   const sec = document.getElementById(id);
   if (sec) sec.classList.remove('hidden');
-  // Active nav
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const navMap = { 'dashboard-section':'nav-dashboard', 'campaigns-section':'nav-campaigns',
-                   'users-section':'nav-users', 'orders-section':'nav-orders', 'profile-section':'nav-profile' };
+  const navMap = {
+    'dashboard-section': 'nav-dashboard',
+    'campaigns-section': 'nav-campaigns',
+    'users-section': 'nav-users',
+    'orders-section': 'nav-orders',
+    'profile-section': 'nav-profile'
+  };
   const navId = navMap[id];
   if (navId) {
     const el = document.getElementById(navId);
     if (el) el.classList.add('active');
   }
-  window.scrollTo(0,0);
+  // Mobile nav
+  document.querySelectorAll('.mob-nav-item').forEach(n => n.classList.remove('active'));
+  const mobMap = {
+    'dashboard-section': 'mob-nav-dashboard',
+    'campaigns-section': 'mob-nav-campaigns',
+    'profile-section': 'mob-nav-profile'
+  };
+  const mobId = mobMap[id];
+  if (mobId) {
+    const el = document.getElementById(mobId);
+    if (el) el.classList.add('active');
+  }
+  window.scrollTo(0, 0);
 }
 
 /* ---------- TOAST ---------- */
@@ -88,11 +129,11 @@ function closeModal(id) {
   const m = document.getElementById(id);
   if (m) { m.classList.add('hidden'); document.body.style.overflow = ''; }
 }
-function closeAllModals() {
-  document.querySelectorAll('.modal-overlay').forEach(m => {
-    m.classList.add('hidden');
-  });
-  document.body.style.overflow = '';
+
+/* ---------- SET TEXT ---------- */
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
 }
 
 /* ============================================================
@@ -100,57 +141,48 @@ function closeAllModals() {
    ============================================================ */
 async function loadDashboard() {
   try {
-    const [stats, botStats] = await Promise.all([
-      apiGet('/api/dashboard/stats'),
-      apiGet('/api/bot/stats').catch(() => ({ ok:false }))
+    const [statsRes, botRes] = await Promise.all([
+      apiGet('/api/stats'),
+      apiGet('/api/bot/stats').catch(() => ({ ok: false }))
     ]);
 
-    if (stats.ok) {
-      setText('stat-users', stats.users || 0);
-      setText('stat-campaigns', stats.campaigns || 0);
-      setText('stat-orders', stats.orders || 0);
-      setText('stat-revenue', fmtFCFA(stats.revenue));
-      setText('stat-groups', stats.active_groups || 0);
-      setText('stat-pending', stats.pending_withdrawals || 0);
+    // Stats principales — gère plusieurs formats de réponse
+    const stats = statsRes.ok ? (statsRes.stats || statsRes.data || statsRes) : {};
+    setText('stat-users', stats.users ?? stats.inscrits_ngd ?? stats.total_users ?? 0);
+    setText('stat-campaigns', stats.campaigns ?? stats.total_campaigns ?? 0);
+    setText('stat-orders', stats.orders ?? stats.commandes_tcl ?? stats.total_orders ?? 0);
+    setText('stat-revenue', fmtFCFA(stats.revenue ?? stats.total_revenue ?? 0));
+    setText('stat-groups', stats.active_groups ?? stats.groupes_coalition ?? 0);
+    setText('stat-pending', stats.pending_withdrawals ?? stats.retraits_en_attente ?? 0);
+
+    // Stats Bot
+    let botData = {};
+    if (botRes.ok) {
+      botData = botRes.latest ?? botRes.stats ?? botRes.data ?? botRes ?? {};
     }
+    setText('bot-conversations', botData.conversations ?? 0);
+    setText('bot-active', botData.active ?? botData.messages ?? 0);
+    setText('bot-leads', botData.leads ?? 0);
+    setText('bot-conversions', botData.conversions ?? 0);
+    setText('bot-messages', botData.messages ?? 0);
+    setText('week-leads', botData.leads ?? 0);
+    setText('week-conversions', botData.conversions ?? 0);
+    setText('week-messages', botData.messages ?? 0);
+    setText('bot-last-update', botRes.ok ? 'À l'instant' : '—');
 
-    // Stats Bot — gère les 2 formats de réponse
-    if (botStats.ok) {
-      const data = botStats.latest || botStats.stats || botStats;
-      setText('bot-conversations', data.conversations || 0);
-      setText('bot-active', data.active || data.messages || 0);
-      setText('bot-leads', data.leads || 0);
-      setText('bot-conversions', data.conversions || 0);
-      setText('bot-messages', data.messages || 0);
-      setText('bot-last-update', 'À l'instant');
-    } else {
-      // Fallback : afficher 0 sans planter
-      setText('bot-conversations', 0);
-      setText('bot-active', 0);
-      setText('bot-leads', 0);
-      setText('bot-conversions', 0);
-      setText('bot-messages', 0);
-      setText('bot-last-update', '—');
-    }
+    // Graphique
+    renderBotChart(botRes.week ?? botRes.history ?? botData.history ?? []);
 
-    // Graphique 7j
-    renderBotChart(botStats.week || botStats.history || []);
-
-    // Coalition progression
-    const groups = stats.active_groups || 0;
+    // Coalition
+    const groups = stats.active_groups ?? stats.groupes_coalition ?? 0;
     setText('coalition-progress', groups + ' / 232 groupes créés');
     const bar = document.getElementById('coalition-bar');
-    if (bar) bar.style.width = Math.min((groups/232)*100, 100) + '%';
+    if (bar) bar.style.width = Math.min((groups / 232) * 100, 100) + '%';
 
   } catch (e) {
     console.error('Dashboard load error:', e);
     showToast('Erreur chargement dashboard', 'error');
   }
-}
-
-function setText(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
 }
 
 /* ---------- CHART ---------- */
@@ -164,14 +196,13 @@ function renderBotChart(data) {
   const values = [];
   if (Array.isArray(data) && data.length) {
     data.forEach(d => {
-      labels.push(d.date || d.day || '?');
-      values.push(d.messages || d.count || 0);
+      labels.push(d.date ?? d.day ?? '?');
+      values.push(d.messages ?? d.count ?? 0);
     });
   } else {
-    // Fallback : 7 derniers jours à 0
-    for (let i=6; i>=0; i--) {
-      const d = new Date(); d.setDate(d.getDate()-i);
-      labels.push(d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}));
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      labels.push(d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }));
       values.push(0);
     }
   }
@@ -212,23 +243,25 @@ async function loadCampaigns() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (!res.ok || !res.campaigns || !res.campaigns.length) {
+    const campaigns = res.campaigns ?? res.data ?? [];
+    if (!res.ok || !campaigns.length) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#888;">Aucune campagne</td></tr>';
       return;
     }
 
-    res.campaigns.forEach(c => {
+    campaigns.forEach(c => {
       const tr = document.createElement('tr');
+      const cid = c.id ?? c.campaign_id ?? '';
       tr.innerHTML = `
-        <td><strong>${escapeHtml(c.name || c.nom || '—')}</strong></td>
-        <td>${escapeHtml(c.type || '—')}</td>
-        <td>${escapeHtml(c.region || '—')}</td>
-        <td>${fmtDate(c.date || c.created_at)}</td>
-        <td><span class="badge ${c.status==='active'?'badge-green':'badge-gray'}">${c.status || c.statut || '—'}</span></td>
-        <td>${fmtFCFA(c.price || c.budget || 0)}</td>
+        <td><strong>${escapeHtml(c.name ?? c.nom ?? '—')}</strong></td>
+        <td>${escapeHtml(c.type ?? '—')}</td>
+        <td>${escapeHtml(c.region ?? '—')}</td>
+        <td>${fmtDate(c.date ?? c.created_at)}</td>
+        <td><span class="badge ${(c.status ?? c.statut) === 'active' ? 'badge-green' : 'badge-gray'}">${c.status ?? c.statut ?? '—'}</span></td>
+        <td>${fmtFCFA(c.price ?? c.budget ?? 0)}</td>
         <td>
-          <button class="btn-icon" onclick="openEditCampaign('${c.id || c.campaign_id}')" title="Modifier">✏️</button>
-          <button class="btn-icon" onclick="viewCampaign('${c.id || c.campaign_id}')" title="Voir">👁️</button>
+          <button class="btn-icon" onclick="openEditCampaign('${cid}')" title="Modifier">✏️</button>
+          <button class="btn-icon" onclick="viewCampaign('${cid}')" title="Voir">👁️</button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -237,12 +270,6 @@ async function loadCampaigns() {
     console.error('Campaigns load error:', e);
     showToast('Erreur chargement campagnes', 'error');
   }
-}
-
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
 }
 
 async function createCampaign() {
@@ -257,25 +284,28 @@ async function createCampaign() {
   if (res.ok) {
     showToast('Campagne créée !', 'success');
     closeModal('modal-new-campaign');
+    document.getElementById('camp-name').value = '';
+    document.getElementById('camp-region').value = '';
+    document.getElementById('camp-budget').value = '';
     loadCampaigns();
     loadDashboard();
   } else {
-    showToast(res.error || 'Erreur création', 'error');
+    showToast(res.error ?? 'Erreur création', 'error');
   }
 }
 
 async function openEditCampaign(id) {
   try {
     const res = await apiGet('/api/campaigns?id=' + encodeURIComponent(id));
-    const c = res.campaign || res.campaigns?.[0];
+    const c = res.campaign ?? res.campaigns?.[0];
     if (!c) { showToast('Campagne introuvable', 'error'); return; }
 
-    document.getElementById('edit-camp-id').value = c.id || c.campaign_id || id;
-    document.getElementById('edit-camp-name').value = c.name || c.nom || '';
-    document.getElementById('edit-camp-type').value = c.type || '';
-    document.getElementById('edit-camp-region').value = c.region || '';
-    document.getElementById('edit-camp-budget').value = c.price || c.budget || 0;
-    document.getElementById('edit-camp-status').value = c.status || c.statut || 'active';
+    document.getElementById('edit-camp-id').value = c.id ?? c.campaign_id ?? id;
+    document.getElementById('edit-camp-name').value = c.name ?? c.nom ?? '';
+    document.getElementById('edit-camp-type').value = c.type ?? '';
+    document.getElementById('edit-camp-region').value = c.region ?? '';
+    document.getElementById('edit-camp-budget').value = c.price ?? c.budget ?? 0;
+    document.getElementById('edit-camp-status').value = c.status ?? c.statut ?? 'active';
 
     openModal('modal-edit-campaign');
   } catch (e) {
@@ -298,7 +328,7 @@ async function saveEditCampaign() {
     closeModal('modal-edit-campaign');
     loadCampaigns();
   } else {
-    showToast(res.error || 'Erreur mise à jour', 'error');
+    showToast(res.error ?? 'Erreur mise à jour', 'error');
   }
 }
 
@@ -316,26 +346,28 @@ async function loadOrders() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (!res.ok || !res.orders || !res.orders.length) {
+    const orders = res.orders ?? res.data ?? [];
+    if (!res.ok || !orders.length) {
       tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#888;">Aucune commande</td></tr>';
       return;
     }
 
-    res.orders.forEach(o => {
-      const isPaid = (o.payment_status || o.statut_paiement) === 'paid' || (o.status || o.statut) === 'completed';
+    orders.forEach(o => {
+      const isPaid = (o.payment_status ?? o.statut_paiement) === 'paid' || (o.status ?? o.statut) === 'completed';
+      const oid = o.id ?? o.id_commande ?? '';
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${escapeHtml(o.ref || o.id_commande || '#CMD-?')}</strong></td>
-        <td>${escapeHtml(o.client || o.nom_complet || '—')}<br><small>${escapeHtml(o.telephone || '')}</small></td>
-        <td>${fmtFCFA(o.amount || o.montant || 0)}</td>
-        <td>${escapeHtml(o.region || '—')}</td>
-        <td><span class="badge ${isPaid?'badge-green':'badge-orange'}">${escapeHtml(o.status || o.statut || 'pending')}</span></td>
-        <td><span class="badge ${isPaid?'badge-green':'badge-gray'}">${isPaid?'Payé':'En attente'}</span></td>
-        <td>${fmtDate(o.date || o.created_at)}</td>
+        <td><strong>${escapeHtml(o.ref ?? oid ?? '#CMD-?')}</strong></td>
+        <td>${escapeHtml(o.client ?? o.nom_complet ?? '—')}<br><small>${escapeHtml(o.telephone ?? '')}</small></td>
+        <td>${fmtFCFA(o.amount ?? o.montant ?? 0)}</td>
+        <td>${escapeHtml(o.region ?? '—')}</td>
+        <td><span class="badge ${isPaid ? 'badge-green' : 'badge-orange'}">${escapeHtml(o.status ?? o.statut ?? 'pending')}</span></td>
+        <td><span class="badge ${isPaid ? 'badge-green' : 'badge-gray'}">${isPaid ? 'Payé' : 'En attente'}</span></td>
+        <td>${fmtDate(o.date ?? o.created_at)}</td>
         <td>
           ${isPaid
             ? '<span class="badge badge-green">✓ Payé</span>'
-            : `<button class="btn-pay" onclick="payOrder('${o.id || o.id_commande}')">💳 Payer</button>`}
+            : `<button class="btn-pay" onclick="payOrder('${oid}')">💳 Payer</button>`}
         </td>
       `;
       tbody.appendChild(tr);
@@ -345,7 +377,7 @@ async function loadOrders() {
   }
 }
 
-async function payOrder(id) {
+function payOrder(id) {
   openModal('modal-pay-order');
   document.getElementById('pay-order-id').value = id;
 }
@@ -360,7 +392,7 @@ async function confirmPayOrder() {
     loadOrders();
     loadDashboard();
   } else {
-    showToast(res.error || 'Erreur paiement', 'error');
+    showToast(res.error ?? 'Erreur paiement', 'error');
   }
 }
 
@@ -374,19 +406,20 @@ async function loadUsers() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (!res.ok || !res.users || !res.users.length) {
+    const users = res.users ?? res.data ?? [];
+    if (!res.ok || !users.length) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#888;">Aucun utilisateur</td></tr>';
       return;
     }
 
-    res.users.forEach(u => {
+    users.forEach(u => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${escapeHtml(u.prenom || u.first_name || '—')} ${escapeHtml(u.nom || u.last_name || '')}</strong></td>
-        <td>${escapeHtml(u.telephone || u.phone || '—')}</td>
-        <td>${escapeHtml(u.email || '—')}</td>
-        <td>${escapeHtml(u.region || '—')}</td>
-        <td><span class="badge ${u.role==='admin'?'badge-purple':'badge-blue'}">${escapeHtml(u.role || u.profil || 'User')}</span></td>
+        <td><strong>${escapeHtml(u.prenom ?? u.first_name ?? '—')} ${escapeHtml(u.nom ?? u.last_name ?? '')}</strong></td>
+        <td>${escapeHtml(u.telephone ?? u.phone ?? '—')}</td>
+        <td>${escapeHtml(u.email ?? '—')}</td>
+        <td>${escapeHtml(u.region ?? '—')}</td>
+        <td><span class="badge ${u.role === 'admin' ? 'badge-purple' : 'badge-blue'}">${escapeHtml(u.role ?? u.profil ?? 'User')}</span></td>
         <td>${fmtDate(u.created_at)}</td>
       `;
       tbody.appendChild(tr);
@@ -401,23 +434,32 @@ async function loadUsers() {
    ============================================================ */
 async function loadProfile() {
   const user = getUser();
-  setText('profile-name', (user.prenom || user.first_name || '—') + ' ' + (user.nom || user.last_name || ''));
-  setText('profile-role', user.role || user.profil || 'Utilisateur');
-  setText('profile-id', user.id_ngd || user.id || '—');
-  setText('profile-phone', user.telephone || user.phone || '—');
-  setText('profile-email', user.email || '—');
-  setText('profile-region', user.region || '—');
-  setText('profile-commune', user.commune || '—');
+  const name = (user.prenom ?? user.first_name ?? '') + ' ' + (user.nom ?? user.last_name ?? '');
+  setText('profile-name', name.trim() || '—');
+  setText('profile-role', user.role ?? user.profil ?? 'Utilisateur');
+  setText('profile-id', user.id_ngd ?? user.id ?? '—');
+  setText('profile-phone', user.telephone ?? user.phone ?? '—');
+  setText('profile-email', user.email ?? '—');
+  setText('profile-region', user.region ?? '—');
+  setText('profile-commune', user.commune ?? '—');
 
-  // Pré-remplir le formulaire d'édition
+  // Sidebar
+  setText('sidebar-name', user.prenom ?? user.first_name ?? 'Utilisateur');
+  setText('sidebar-role', user.role ?? user.profil ?? 'Membre');
+
+  // Pré-remplir formulaire
   const p = document.getElementById('edit-prenom');
-  if (p) p.value = user.prenom || user.first_name || '';
+  if (p) p.value = user.prenom ?? user.first_name ?? '';
   const n = document.getElementById('edit-nom');
-  if (n) n.value = user.nom || user.last_name || '';
+  if (n) n.value = user.nom ?? user.last_name ?? '';
   const t = document.getElementById('edit-telephone');
-  if (t) t.value = user.telephone || user.phone || '';
+  if (t) t.value = user.telephone ?? user.phone ?? '';
   const e = document.getElementById('edit-email');
-  if (e) e.value = user.email || '';
+  if (e) e.value = user.email ?? '';
+  const r = document.getElementById('edit-region');
+  if (r) r.value = user.region ?? '';
+  const c = document.getElementById('edit-commune');
+  if (c) c.value = user.commune ?? '';
 }
 
 async function saveProfile() {
@@ -440,7 +482,7 @@ async function saveProfile() {
     localStorage.setItem('user', JSON.stringify({ ...getUser(), ...body }));
     loadProfile();
   } else {
-    showToast(res.error || 'Erreur', 'error');
+    showToast(res.error ?? 'Erreur', 'error');
   }
 }
 
@@ -452,7 +494,7 @@ function exportCSV(filename, rows) {
   const headers = Object.keys(rows[0]);
   const csv = [headers.join(';')];
   rows.forEach(r => {
-    csv.push(headers.map(h => '"' + String(r[h] || '').replace(/"/g,'""') + '"').join(';'));
+    csv.push(headers.map(h => '"' + String(r[h] ?? '').replace(/"/g, '""') + '"').join(';'));
   });
   const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
@@ -463,15 +505,21 @@ function exportCSV(filename, rows) {
 
 async function exportCampaignsCSV() {
   const res = await apiGet('/api/campaigns');
-  if (res.ok && res.campaigns) exportCSV('campagnes.csv', res.campaigns);
+  const data = res.campaigns ?? res.data ?? [];
+  if (res.ok && data.length) exportCSV('campagnes.csv', data);
+  else showToast('Aucune donnée', 'error');
 }
 async function exportOrdersCSV() {
   const res = await apiGet('/api/orders');
-  if (res.ok && res.orders) exportCSV('commandes.csv', res.orders);
+  const data = res.orders ?? res.data ?? [];
+  if (res.ok && data.length) exportCSV('commandes.csv', data);
+  else showToast('Aucune donnée', 'error');
 }
 async function exportUsersCSV() {
   const res = await apiGet('/api/users');
-  if (res.ok && res.users) exportCSV('utilisateurs.csv', res.users);
+  const data = res.users ?? res.data ?? [];
+  if (res.ok && data.length) exportCSV('utilisateurs.csv', data);
+  else showToast('Aucune donnée', 'error');
 }
 
 /* ============================================================
@@ -479,11 +527,15 @@ async function exportUsersCSV() {
    ============================================================ */
 function toggleMobileMenu() {
   const nav = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
   if (nav) nav.classList.toggle('open');
+  if (overlay) overlay.classList.toggle('open');
 }
 function closeMobileMenu() {
   const nav = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
   if (nav) nav.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
 }
 
 /* ============================================================
@@ -493,65 +545,121 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auth check
   if (!getToken()) { window.location.href = 'index.html'; return; }
 
-  const user = getUser();
-  setText('sidebar-name', (user.prenom || user.first_name || 'Utilisateur'));
-  setText('sidebar-role', user.role || user.profil || 'Membre');
+  // Header buttons
+  document.getElementById('btn-refresh')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showToast('Actualisation...', 'info');
+    loadDashboard();
+    loadCampaigns();
+    loadOrders();
+    loadUsers();
+  });
 
-  // Bouton Actualiser (header)
-  const btnRefresh = document.getElementById('btn-refresh');
-  if (btnRefresh) {
-    btnRefresh.addEventListener('click', () => {
-      showToast('Actualisation...', 'info');
-      loadDashboard();
-      loadCampaigns();
-      loadOrders();
-      loadUsers();
-    });
-  }
+  document.getElementById('btn-logout')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    logout();
+  });
 
-  // Bouton Déconnexion (header)
-  const btnLogout = document.getElementById('btn-logout');
-  if (btnLogout) {
-    btnLogout.addEventListener('click', logout);
-  }
+  document.getElementById('btn-logout-sidebar')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    logout();
+  });
 
-  // Déconnexion sidebar
-  const btnLogoutSide = document.getElementById('btn-logout-sidebar');
-  if (btnLogoutSide) {
-    btnLogoutSide.addEventListener('click', logout);
-  }
+  // Sidebar nav — preventDefault sur les <a>
+  document.getElementById('nav-dashboard')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('dashboard-section');
+    closeMobileMenu();
+    loadDashboard();
+  });
+  document.getElementById('nav-campaigns')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('campaigns-section');
+    closeMobileMenu();
+    loadCampaigns();
+  });
+  document.getElementById('nav-users')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('users-section');
+    closeMobileMenu();
+    loadUsers();
+  });
+  document.getElementById('nav-orders')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('orders-section');
+    closeMobileMenu();
+    loadOrders();
+  });
+  document.getElementById('nav-profile')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('profile-section');
+    closeMobileMenu();
+    loadProfile();
+  });
 
-  // Navigation
-  document.getElementById('nav-dashboard')?.addEventListener('click', () => { showSection('dashboard-section'); closeMobileMenu(); });
-  document.getElementById('nav-campaigns')?.addEventListener('click', () => { showSection('campaigns-section'); closeMobileMenu(); loadCampaigns(); });
-  document.getElementById('nav-users')?.addEventListener('click', () => { showSection('users-section'); closeMobileMenu(); loadUsers(); });
-  document.getElementById('nav-orders')?.addEventListener('click', () => { showSection('orders-section'); closeMobileMenu(); loadOrders(); });
-  document.getElementById('nav-profile')?.addEventListener('click', () => { showSection('profile-section'); closeMobileMenu(); loadProfile(); });
-
-  // Mobile nav bottom
-  document.getElementById('mob-nav-dashboard')?.addEventListener('click', () => { showSection('dashboard-section'); loadDashboard(); });
-  document.getElementById('mob-nav-campaigns')?.addEventListener('click', () => { showSection('campaigns-section'); loadCampaigns(); });
-  document.getElementById('mob-nav-profile')?.addEventListener('click', () => { showSection('profile-section'); loadProfile(); });
+  // Mobile bottom nav
+  document.getElementById('mob-nav-dashboard')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('dashboard-section');
+    loadDashboard();
+  });
+  document.getElementById('mob-nav-campaigns')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('campaigns-section');
+    loadCampaigns();
+  });
+  document.getElementById('mob-nav-profile')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('profile-section');
+    loadProfile();
+  });
 
   // Burger
-  document.getElementById('menu-toggle')?.addEventListener('click', toggleMobileMenu);
+  document.getElementById('menu-toggle')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleMobileMenu();
+  });
 
-  // Modals — close on backdrop click
+  // Modals — close on backdrop
   document.querySelectorAll('.modal-overlay').forEach(m => {
     m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
   });
 
-  // Boutons modals
-  document.getElementById('btn-new-campaign')?.addEventListener('click', () => openModal('modal-new-campaign'));
-  document.getElementById('btn-save-campaign')?.addEventListener('click', createCampaign);
-  document.getElementById('btn-save-edit-campaign')?.addEventListener('click', saveEditCampaign);
-  document.getElementById('btn-confirm-pay')?.addEventListener('click', confirmPayOrder);
-  document.getElementById('btn-save-profile')?.addEventListener('click', saveProfile);
+  // Modal buttons
+  document.getElementById('btn-new-campaign')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal('modal-new-campaign');
+  });
+  document.getElementById('btn-save-campaign')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    createCampaign();
+  });
+  document.getElementById('btn-save-edit-campaign')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    saveEditCampaign();
+  });
+  document.getElementById('btn-confirm-pay')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    confirmPayOrder();
+  });
+  document.getElementById('btn-save-profile')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    saveProfile();
+  });
 
   // CSV
-  document.getElementById('csv-campaigns')?.addEventListener('click', exportCampaignsCSV);
-  document.getElementById('csv-orders')?.addEventListener('click', exportOrdersCSV);
-  document.getElementById('csv-users')?.addEventListener('click', exportUsersCSV);
+  document.getElementById('csv-campaigns')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    exportCampaignsCSV();
+  });
+  document.getElementById('csv-orders')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    exportOrdersCSV();
+  });
+  document.getElementById('csv-users')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    exportUsersCSV();
+  });
 
   // Chargement initial
   loadDashboard();
