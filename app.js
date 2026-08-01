@@ -28,6 +28,15 @@ function formatCurrency(n) {
   return (n || 0).toLocaleString('fr-FR') + ' FCFA';
 }
 
+function normalizeList(response) {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+  if (response.items && Array.isArray(response.items)) return response.items;
+  if (response.data && Array.isArray(response.data)) return response.data;
+  if (response.results && Array.isArray(response.results)) return response.results;
+  return [];
+}
+
 function showAlert(message, type = 'error', container = null) {
   const div = document.createElement('div');
   div.className = `alert alert-${type}`;
@@ -508,6 +517,33 @@ function loadSection(sectionName) {
   const titleEl = $('.topbar h1');
   if (titleEl) titleEl.textContent = getSectionTitle(sectionName);
 
+  // Gérer le bouton "Nouvelle campagne" dans la topbar globale (desktop)
+  const topbarActions = $('.topbar-actions');
+  let campaignBtn = $('#topbar-campaign-btn');
+  const user = getUser();
+  const isAdmin = user.role === 'admin';
+
+  // Bouton dans la topbar globale (desktop)
+  if (sectionName === 'campaigns' && isAdmin) {
+    if (!campaignBtn && topbarActions) {
+      campaignBtn = document.createElement('button');
+      campaignBtn.id = 'topbar-campaign-btn';
+      campaignBtn.className = 'btn btn-primary';
+      campaignBtn.innerHTML = '+ Nouvelle campagne';
+      campaignBtn.addEventListener('click', showCreateCampaignModal);
+      topbarActions.insertBefore(campaignBtn, topbarActions.firstChild);
+    }
+    if (campaignBtn) campaignBtn.style.display = 'inline-flex';
+  } else {
+    if (campaignBtn) campaignBtn.style.display = 'none';
+  }
+
+  // Bouton dans la section (mobile) — cacher si non-admin
+  const sectionCampaignBtn = $('#btn-create-campaign');
+  if (sectionCampaignBtn) {
+    sectionCampaignBtn.style.display = (sectionName === 'campaigns' && isAdmin) ? 'inline-flex' : 'none';
+  }
+
   switch (sectionName) {
     case 'overview': loadOverview(); break;
     case 'campaigns': loadCampaigns(); break;
@@ -705,8 +741,9 @@ async function loadCampaigns() {
     if (status) params.status = status;
     if (region) params.region = region;
 
-    const campaigns = await listCampaigns(params);
-    if (!campaigns || campaigns.length === 0) {
+    const response = await listCampaigns(params);
+    const campaigns = normalizeList(response);
+    if (campaigns.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucune campagne trouvée</td></tr>';
       return;
     }
@@ -780,8 +817,9 @@ async function loadUsers() {
   tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
 
   try {
-    const users = await listUsers({ limit: 50 });
-    if (!users || users.length === 0) {
+    const response = await listUsers({ limit: 50 });
+    const users = normalizeList(response);
+    if (users.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucun utilisateur trouvé</td></tr>';
       return;
     }
@@ -809,8 +847,9 @@ async function loadOrders() {
   tbody.innerHTML = '<tr><td colspan="8" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
 
   try {
-    const orders = await getOrders({ limit: 50 });
-    if (!orders || orders.length === 0) {
+    const response = await getOrders({ limit: 50 });
+    const orders = normalizeList(response);
+    if (orders.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#666">Aucune commande trouvée</td></tr>';
       return;
     }
@@ -841,8 +880,20 @@ function showPaymentModal(orderId, amount) {
 // ============================================================
 // PROFILE SECTION
 // ============================================================
-function loadProfile() {
-  const user = getUser();
+async function loadProfile() {
+  let user = getUser();
+
+  // Essayer de récupérer les données fraîches depuis l'API
+  try {
+    const fresh = await getMe();
+    if (fresh && fresh.id) {
+      setUser(fresh);
+      user = fresh;
+    }
+  } catch (e) {
+    console.warn('getMe failed in loadProfile, using cached user');
+  }
+
   if (!user || !user.id) return;
 
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
