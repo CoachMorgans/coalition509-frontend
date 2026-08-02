@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.5.4 (match backend v2.7.9)
+   v1.5.5 (match backend v2.7.9)
    ============================================================ */
 
 const API_BASE_URL = localStorage.getItem('api_url') || 'https://coalition509-api.onrender.com';
@@ -166,11 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAuthPage() {
-  // ── v1.5.4 : Auto-auth depuis lien bot ────────────────────
+  // ── v1.5.5 : Auto-auth depuis lien bot ────────────────────
   const urlParams = new URLSearchParams(window.location.search);
   const botAuth = urlParams.get('bot_auth');
   if (botAuth) {
-    // Nettoyer l'URL pour ne pas exposer le token dans l'historique
+    // Nettoyer l'URL immédiatement pour ne pas exposer le token
     window.history.replaceState({}, document.title, window.location.pathname);
     api('/api/v1/auth/verify-bot-token', {
       method: 'POST',
@@ -181,12 +181,16 @@ function initAuthPage() {
         if (data.user) setUser(data.user);
         window.location.href = 'dashboard.html';
       } else if (data.needs_registration) {
-        localStorage.setItem('bot_phone', data.phone || '');
         showToast('Veuillez compléter votre inscription', 'info');
-        // Laisser le formulaire s'afficher, pré-remplir le téléphone
+        // Pré-remplir le téléphone dans le formulaire d'inscription
         const regPhone = document.getElementById('reg-phone');
         if (regPhone && data.phone) regPhone.value = data.phone;
-        if (registerTab) registerTab.click();
+        // Pré-remplir aussi dans le login au cas où
+        const loginPhone = document.getElementById('login-phone');
+        if (loginPhone && data.phone) loginPhone.value = data.phone;
+        // Basculer sur l'onglet inscription
+        const regTab = document.getElementById('tab-register');
+        if (regTab) regTab.click();
       } else {
         showToast('Lien de connexion invalide ou expiré', 'error');
       }
@@ -551,7 +555,7 @@ async function loadBotStats() {
       if (el) el.textContent = formatNumber(val);
     };
     setText('bot-conversations', latest.conversations);
-    setText('bot-active', latest.active !== undefined ? latest.active : (latest.conversations || 0));
+    setText('bot-active', latest.active);
     setText('bot-leads', latest.leads);
     setText('bot-conversions', latest.conversions);
     setText('bot-messages', latest.messages);
