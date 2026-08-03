@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.5.5 (match backend v2.7.9)
+   v1.5.6 (match backend v2.8.2)
    ============================================================ */
 
 const API_BASE_URL = localStorage.getItem('api_url') || 'https://coalition509-api.onrender.com';
@@ -20,6 +20,12 @@ function formatDate(d) {
   });
 }
 
+
+function normaliserTel(tel) {
+  let t = (tel || '').toString().trim().replace(/\s/g, '').replace(/-/g, '').replace(/\./g, '');
+  if (t.startsWith('+')) t = '00' + t.slice(1);
+  return t;
+}
 function formatCurrency(n) {
   return (n || 0).toLocaleString('fr-FR') + ' FCFA';
 }
@@ -102,7 +108,7 @@ async function api(endpoint, options) {
 }
 
 async function login(phone, pin) {
-  const data = await api('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ phone, pin }) });
+  const data = await api('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ phone: normaliserTel(phone), pin }) });
   setToken(data.access_token);
   setUser(data.user);
   return data;
@@ -182,6 +188,9 @@ function initAuthPage() {
         window.location.href = 'dashboard.html';
       } else if (data.needs_registration) {
         showToast('Veuillez compléter votre inscription', 'info');
+        // Forcer le mode Utilisateur (pas Admin) pour voir les onglets
+        const modeUser = document.getElementById('mode-user');
+        if (modeUser) modeUser.click();
         // Pré-remplir le téléphone dans le formulaire d'inscription
         const regPhone = document.getElementById('reg-phone');
         if (regPhone && data.phone) regPhone.value = data.phone;
@@ -305,7 +314,7 @@ function initAuthPage() {
       btn.disabled = true;
       try {
         const data = {
-          phone: getVal('reg-phone', 'phone').trim(),
+          phone: normaliserTel(getVal('reg-phone', 'phone').trim()),
           first_name: getVal('reg-firstname', 'first_name').trim(),
           last_name: getVal('reg-lastname', 'last_name').trim(),
           email: getVal('reg-email', 'email').trim() || null,
