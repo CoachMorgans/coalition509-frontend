@@ -1,7 +1,9 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.5.6 (match backend v2.8.2)
+   v1.5.7 (match backend v2.8.3)
+   Fix : normalisation téléphone identique au backend
+         + logout automatique sur 401 / token invalide
    ============================================================ */
 
 const API_BASE_URL = localStorage.getItem('api_url') || 'https://coalition509-api.onrender.com';
@@ -20,12 +22,16 @@ function formatDate(d) {
   });
 }
 
-
+/* ─── NORMALISATION TÉLÉPHONE (identique au backend v2.8.3) ─── */
 function normaliserTel(tel) {
-  let t = (tel || '').toString().trim().replace(/\s/g, '').replace(/-/g, '').replace(/\./g, '');
+  let t = (tel || '').toString().trim();
+  t = t.replace(/\s/g, '').replace(/-/g, '').replace(/\./g, '').replace(/\(/g, '').replace(/\)/g, '');
   if (t.startsWith('+')) t = '00' + t.slice(1);
+  if (t.startsWith('225') && !t.startsWith('00225')) t = '00' + t;
+  if (t.startsWith('509') && !t.startsWith('00509')) t = '00' + t;
   return t;
 }
+
 function formatCurrency(n) {
   return (n || 0).toLocaleString('fr-FR') + ' FCFA';
 }
@@ -90,21 +96,29 @@ function setUser(user) {
   localStorage.setItem('user', JSON.stringify(user));
 }
 
+/* ─── API FETCH AVEC LOGOUT AUTO SUR 401 ─── */
 async function api(endpoint, options) {
   options = options || {};
   const url = API_BASE_URL + endpoint;
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const token = getToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  try {
-    const res = await fetch(url, { ...options, headers });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || data.message || 'Erreur ' + res.status);
-    return data;
-  } catch (err) {
-    console.error('API Error:', err);
+
+  const res = await fetch(url, { ...options, headers });
+
+  // LOGOUT AUTO + REDIRECT sur 401
+  if (res.status === 401) {
+    clearAuth();
+    const err = new Error('SESSION_EXPIRED');
+    err.handled = true;
+    // Petit délai pour laisser le navigateur changer de page
+    window.location.href = 'index.html';
     throw err;
   }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || data.message || 'Erreur ' + res.status);
+  return data;
 }
 
 async function login(phone, pin) {
@@ -172,11 +186,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAuthPage() {
-  // ── v1.5.5 : Auto-auth depuis lien bot ────────────────────
+  // ── v1.5.7 : Auto-auth depuis lien bot ────────────────────
   const urlParams = new URLSearchParams(window.location.search);
   const botAuth = urlParams.get('bot_auth');
   if (botAuth) {
-    // Nettoyer l'URL immédiatement pour ne pas exposer le token
     window.history.replaceState({}, document.title, window.location.pathname);
     api('/api/v1/auth/verify-bot-token', {
       method: 'POST',
@@ -188,22 +201,19 @@ function initAuthPage() {
         window.location.href = 'dashboard.html';
       } else if (data.needs_registration) {
         showToast('Veuillez compléter votre inscription', 'info');
-        // Forcer le mode Utilisateur (pas Admin) pour voir les onglets
         const modeUser = document.getElementById('mode-user');
         if (modeUser) modeUser.click();
-        // Pré-remplir le téléphone dans le formulaire d'inscription
         const regPhone = document.getElementById('reg-phone');
         if (regPhone && data.phone) regPhone.value = data.phone;
-        // Pré-remplir aussi dans le login au cas où
         const loginPhone = document.getElementById('login-phone');
         if (loginPhone && data.phone) loginPhone.value = data.phone;
-        // Basculer sur l'onglet inscription
         const regTab = document.getElementById('tab-register');
         if (regTab) regTab.click();
       } else {
         showToast('Lien de connexion invalide ou expiré', 'error');
       }
     }).catch(err => {
+      if (err.handled) return;
       console.error('Bot auth error:', err);
       showToast('Erreur de connexion automatique', 'error');
     });
@@ -295,6 +305,7 @@ function initAuthPage() {
         await login(phone, pin);
         window.location.href = 'dashboard.html';
       } catch (err) {
+        if (err.handled) return;
         showAuthError(err.message || 'Erreur de connexion');
         btn.innerHTML = originalText; btn.disabled = false;
       }
@@ -333,6 +344,7 @@ function initAuthPage() {
         if (loginTab) loginTab.click();
         registerForm.reset();
       } catch (err) {
+        if (err.handled) return;
         showAuthError(err.message || 'Erreur lors de l\'inscription');
       } finally {
         btn.innerHTML = originalText; btn.disabled = false;
@@ -447,6 +459,7 @@ async function loadUserInfo() {
       if (bottomOrders) bottomOrders.style.display = 'none';
     }
   } catch (err) {
+    if (err.handled) return;
     console.error('loadUserInfo error:', err);
     showToast('Erreur de chargement du profil', 'error');
   }
@@ -546,6 +559,7 @@ async function loadOverview() {
       renderStatCard({ value: formatNumber(stats.pending_orders), label: 'Commandes en attente', icon: '⏳', type: 'danger' }) +
       renderStatCard({ value: formatNumber(stats.paid_orders), label: 'Commandes payées', icon: '✅', type: 'info' });
   } catch (err) {
+    if (err.handled) return;
     container.innerHTML = '<div class="alert alert-error">Impossible de charger les statistiques : ' + err.message + '</div>';
     const apiStatus = document.getElementById('api-status');
     if (apiStatus) { apiStatus.textContent = '● API DÉCONNECTÉE'; apiStatus.className = 'badge badge-danger'; }
@@ -609,6 +623,7 @@ async function loadBotStats() {
     const errEl = document.getElementById('bot-stats-error');
     if (errEl) errEl.textContent = '';
   } catch (err) {
+    if (err.handled) return;
     console.error('Bot stats error:', err);
     const errEl = document.getElementById('bot-stats-error');
     if (errEl) errEl.textContent = 'Stats bot indisponibles : ' + err.message;
@@ -645,6 +660,7 @@ async function loadCampaigns() {
       '</tr>'
     ).join('');
   } catch (err) {
+    if (err.handled) return;
     tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>';
   }
 }
@@ -681,6 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Campagne créée avec succès !', 'success');
         loadCampaigns();
       } catch (err) {
+        if (err.handled) return;
         showAlert(err.message, 'error', form);
       } finally {
         btn.disabled = false;
@@ -716,6 +733,7 @@ async function loadUsers() {
       '</tr>'
     ).join('');
   } catch (err) {
+    if (err.handled) return;
     tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>';
   }
 }
@@ -743,6 +761,7 @@ async function loadOrders() {
       '</tr>'
     ).join('');
   } catch (err) {
+    if (err.handled) return;
     tbody.innerHTML = '<tr><td colspan="8" class="alert alert-error">' + err.message + '</td></tr>';
   }
 }
@@ -763,6 +782,7 @@ async function loadProfile() {
     const freshUser = fresh.user || fresh;
     if (freshUser && freshUser.id) { setUser(freshUser); user = freshUser; }
   } catch (e) {
+    if (e.handled) return;
     console.warn('getMe failed in loadProfile, using cached user');
   }
   if (!user || !user.id) return;
