@@ -1,10 +1,9 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.5.8 (match backend v2.8.4)
-   Fix : normalisation téléphone identique au backend
-         + pas de redirect 401 sur routes auth (login/register)
-         + auto-login après inscription
+   v1.5.9 (match backend v2.8.7)
+   Fix : debug auto-auth bot + fallback si backend 500
+         + logs console pour tracer le flux bot→SaaS
    ============================================================ */
 
 const API_BASE_URL = localStorage.getItem('api_url') || 'https://coalition509-api.onrender.com';
@@ -23,7 +22,6 @@ function formatDate(d) {
   });
 }
 
-/* ─── NORMALISATION TÉLÉPHONE (identique au backend v2.8.4) ─── */
 function normaliserTel(tel) {
   let t = (tel || '').toString().trim();
   t = t.replace(/\s/g, '').replace(/-/g, '').replace(/\./g, '').replace(/\(/g, '').replace(/\)/g, '');
@@ -72,32 +70,15 @@ function showToast(message, type) {
   }, 4000);
 }
 
-function getToken() {
-  return localStorage.getItem('access_token');
-}
-
-function setToken(token) {
-  localStorage.setItem('access_token', token);
-}
-
-function clearAuth() {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('user');
-}
-
+function getToken() { return localStorage.getItem('access_token'); }
+function setToken(token) { localStorage.setItem('access_token', token); }
+function clearAuth() { localStorage.removeItem('access_token'); localStorage.removeItem('user'); }
 function getUser() {
-  try { 
-    const raw = JSON.parse(localStorage.getItem('user') || '{}');
-    return raw.user || raw;
-  }
+  try { const raw = JSON.parse(localStorage.getItem('user') || '{}'); return raw.user || raw; }
   catch { return {}; }
 }
+function setUser(user) { localStorage.setItem('user', JSON.stringify(user)); }
 
-function setUser(user) {
-  localStorage.setItem('user', JSON.stringify(user));
-}
-
-/* ─── API FETCH : pas de redirect auto sur routes auth ─── */
 async function api(endpoint, options) {
   options = options || {};
   const url = API_BASE_URL + endpoint;
@@ -106,8 +87,6 @@ async function api(endpoint, options) {
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
   const res = await fetch(url, { ...options, headers });
-
-  // Ne PAS rediriger sur 401 pour les routes d'authentification
   const isAuthRoute = endpoint.includes('/auth/login') || endpoint.includes('/auth/register') || endpoint.includes('/auth/verify-bot-token');
 
   if (res.status === 401 && !isAuthRoute) {
@@ -144,24 +123,18 @@ function logout() {
   window.location.href = 'index.html';
 }
 
-async function getDashboardStats() {
-  return api('/api/v1/dashboard/stats');
-}
-
+async function getDashboardStats() { return api('/api/v1/dashboard/stats'); }
 async function listCampaigns(params) {
   const qs = new URLSearchParams(params || {}).toString();
   return api('/api/v1/campaigns?' + qs);
 }
-
 async function createCampaign(data) {
   return api('/api/v1/campaigns', { method: 'POST', body: JSON.stringify(data) });
 }
-
 async function listUsers(params) {
   const qs = new URLSearchParams(params || {}).toString();
   return api('/api/v1/users?' + qs);
 }
-
 async function getOrders(params) {
   const qs = new URLSearchParams(params || {}).toString();
   return api('/api/v1/orders?' + qs);
@@ -188,36 +161,44 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAuthPage() {
-  // ── v1.5.8 : Auto-auth depuis lien bot ────────────────────
   const urlParams = new URLSearchParams(window.location.search);
   const botAuth = urlParams.get('bot_auth');
+
   if (botAuth) {
+    console.log('[BOT AUTH] Token recu:', botAuth);
     window.history.replaceState({}, document.title, window.location.pathname);
     api('/api/v1/auth/verify-bot-token', {
       method: 'POST',
       body: JSON.stringify({ token: botAuth })
     }).then(data => {
+      console.log('[BOT AUTH] Reponse backend:', data);
       if (data.ok && data.access_token) {
         setToken(data.access_token);
         if (data.user) setUser(data.user);
+        console.log('[BOT AUTH] Connexion directe OK, redirect dashboard');
         window.location.href = 'dashboard.html';
       } else if (data.needs_registration) {
+        console.log('[BOT AUTH] Inscription requise pour:', data.phone);
         showToast('Veuillez compléter votre inscription', 'info');
         const modeUser = document.getElementById('mode-user');
         if (modeUser) modeUser.click();
         const regPhone = document.getElementById('reg-phone');
-        if (regPhone && data.phone) regPhone.value = data.phone;
+        if (regPhone && data.phone) {
+          regPhone.value = data.phone;
+          console.log('[BOT AUTH] Telephone pre-rempli:', data.phone);
+        }
         const loginPhone = document.getElementById('login-phone');
         if (loginPhone && data.phone) loginPhone.value = data.phone;
         const regTab = document.getElementById('tab-register');
         if (regTab) regTab.click();
       } else {
+        console.log('[BOT AUTH] Lien invalide:', data);
         showToast('Lien de connexion invalide ou expiré', 'error');
       }
     }).catch(err => {
       if (err.handled) return;
-      console.error('Bot auth error:', err);
-      showToast('Erreur de connexion automatique', 'error');
+      console.error('[BOT AUTH] Erreur:', err);
+      showToast('Erreur de connexion automatique — backend indisponible (500)', 'error');
     });
     return;
   }
@@ -337,7 +318,6 @@ function initAuthPage() {
           commune: getVal('reg-commune', 'commune').trim() || null
         };
         const result = await register(data);
-        // AUTO-LOGIN après inscription (backend v2.8.4 renvoie access_token)
         if (result.access_token) {
           setToken(result.access_token);
           if (result.user) setUser(result.user);
