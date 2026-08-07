@@ -1,9 +1,10 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.5.7 (match backend v2.8.3)
+   v1.5.8 (match backend v2.8.4)
    Fix : normalisation téléphone identique au backend
-         + logout automatique sur 401 / token invalide
+         + pas de redirect 401 sur routes auth (login/register)
+         + auto-login après inscription
    ============================================================ */
 
 const API_BASE_URL = localStorage.getItem('api_url') || 'https://coalition509-api.onrender.com';
@@ -22,7 +23,7 @@ function formatDate(d) {
   });
 }
 
-/* ─── NORMALISATION TÉLÉPHONE (identique au backend v2.8.3) ─── */
+/* ─── NORMALISATION TÉLÉPHONE (identique au backend v2.8.4) ─── */
 function normaliserTel(tel) {
   let t = (tel || '').toString().trim();
   t = t.replace(/\s/g, '').replace(/-/g, '').replace(/\./g, '').replace(/\(/g, '').replace(/\)/g, '');
@@ -96,7 +97,7 @@ function setUser(user) {
   localStorage.setItem('user', JSON.stringify(user));
 }
 
-/* ─── API FETCH AVEC LOGOUT AUTO SUR 401 ─── */
+/* ─── API FETCH : pas de redirect auto sur routes auth ─── */
 async function api(endpoint, options) {
   options = options || {};
   const url = API_BASE_URL + endpoint;
@@ -106,13 +107,14 @@ async function api(endpoint, options) {
 
   const res = await fetch(url, { ...options, headers });
 
-  // LOGOUT AUTO + REDIRECT sur 401
-  if (res.status === 401) {
+  // Ne PAS rediriger sur 401 pour les routes d'authentification
+  const isAuthRoute = endpoint.includes('/auth/login') || endpoint.includes('/auth/register') || endpoint.includes('/auth/verify-bot-token');
+
+  if (res.status === 401 && !isAuthRoute) {
     clearAuth();
+    window.location.href = 'index.html';
     const err = new Error('SESSION_EXPIRED');
     err.handled = true;
-    // Petit délai pour laisser le navigateur changer de page
-    window.location.href = 'index.html';
     throw err;
   }
 
@@ -186,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAuthPage() {
-  // ── v1.5.7 : Auto-auth depuis lien bot ────────────────────
+  // ── v1.5.8 : Auto-auth depuis lien bot ────────────────────
   const urlParams = new URLSearchParams(window.location.search);
   const botAuth = urlParams.get('bot_auth');
   if (botAuth) {
@@ -334,7 +336,14 @@ function initAuthPage() {
           region: getVal('reg-region', 'region').trim() || null,
           commune: getVal('reg-commune', 'commune').trim() || null
         };
-        await register(data);
+        const result = await register(data);
+        // AUTO-LOGIN après inscription (backend v2.8.4 renvoie access_token)
+        if (result.access_token) {
+          setToken(result.access_token);
+          if (result.user) setUser(result.user);
+          window.location.href = 'dashboard.html';
+          return;
+        }
         showAuthError('');
         const successDiv = document.createElement('div');
         successDiv.style.cssText = 'background:#d4edda;color:#155724;padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:14px;';
