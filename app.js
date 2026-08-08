@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.6.2 (match backend v2.9.1)
+   v1.6.3 (match backend v2.9.1)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
    ============================================================ */
@@ -145,7 +145,7 @@ async function getOrders(params) {
 function setShopLoader(element, html, timeoutMsg) {
   element.innerHTML = html;
   return setTimeout(() => {
-    element.innerHTML = '<p style="text-align:center;padding:40px;color:#888;">' + (timeoutMsg || '⏳ Serveur en cours de réveil (Render free tier)... Patientez 30-60s.') + '</p>';
+    element.innerHTML = '<p style="text-align:center;padding:40px;color:#888;">' + (timeoutMsg || '⏳ Chargement des données...') + '</p>';
   }, 8000);
 }
 
@@ -432,6 +432,13 @@ let botChartInstance = null;
 
 function initDashboardPage() {
   if (!getToken()) { window.location.href = 'index.html'; return; }
+  // Injecte CSS dynamique pour cacher les sous-onglets Shop inactifs (évite conflit avec style.css)
+  if (!document.getElementById('shop-tab-css')) {
+    const s = document.createElement('style');
+    s.id = 'shop-tab-css';
+    s.textContent = '.shop-tab-content { display: none !important; } .shop-tab-content.active { display: block !important; }';
+    document.head.appendChild(s);
+  }
   loadUserInfo();
   setupNavigation();
   setupGlobalListeners();
