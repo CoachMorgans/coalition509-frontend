@@ -2,49 +2,33 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Coalition 509 — Tableau de bord</title>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body class="dashboard-body">
 
-  <!-- ========== MOBILE HEADER ========== -->
+  <!-- MOBILE HEADER -->
   <header class="mobile-header">
     <button class="menu-toggle" id="mobile-menu-toggle" aria-label="Menu">☰</button>
-    <div class="mobile-brand">
-      <h1>Coalition <span>509</span></h1>
-    </div>
+    <div class="mobile-brand"><h1>Coalition <span>509</span></h1></div>
     <div class="user-avatar" id="mobile-avatar">U</div>
   </header>
 
-  <!-- ========== SIDEBAR ========== -->
+  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h2>Coalition <span>509</span></h2>
       <p>VoteConnect Ecosystem | ChallengeFinancier™</p>
     </div>
     <nav class="sidebar-nav">
-      <a class="nav-item active" data-section="overview" href="#">
-        <span class="nav-icon">📊</span>
-        <span class="nav-label">Vue d'ensemble</span>
-      </a>
-      <a class="nav-item" data-section="campaigns" href="#">
-        <span class="nav-icon">📢</span>
-        <span class="nav-label">Campagnes</span>
-      </a>
-      <a class="nav-item" data-section="users" href="#" id="nav-users" style="display:none;">
-        <span class="nav-icon">👥</span>
-        <span class="nav-label">Utilisateurs</span>
-      </a>
-      <a class="nav-item" data-section="orders" href="#" id="nav-orders" style="display:none;">
-        <span class="nav-icon">🔒</span>
-        <span class="nav-label">Commandes TCL</span>
-      </a>
-      <a class="nav-item" data-section="profile" href="#">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label">Mon Profil</span>
-      </a>
+      <a class="nav-item active" data-section="overview" href="#"><span class="nav-icon">📊</span><span class="nav-label">Vue d'ensemble</span></a>
+      <a class="nav-item" data-section="campaigns" href="#"><span class="nav-icon">📢</span><span class="nav-label">Campagnes</span></a>
+      <a class="nav-item" data-section="users" href="#" id="nav-users" style="display:none;"><span class="nav-icon">👥</span><span class="nav-label">Utilisateurs</span></a>
+      <a class="nav-item" data-section="shop" href="#" id="nav-shop" style="display:none;"><span class="nav-icon">🛒</span><span class="nav-label">Commandes</span></a>
+      <a class="nav-item" data-section="profile" href="#"><span class="nav-icon">👤</span><span class="nav-label">Mon Profil</span></a>
     </nav>
     <div class="sidebar-footer">
       <div class="user-mini">
@@ -58,10 +42,9 @@
     </div>
   </aside>
 
-  <!-- Sidebar overlay for mobile -->
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-  <!-- ========== MAIN CONTENT ========== -->
+  <!-- MAIN CONTENT -->
   <main class="main-content" id="main-content">
 
     <!-- Desktop topbar -->
@@ -77,37 +60,8 @@
     <!-- ===== SECTION: OVERVIEW ===== -->
     <section class="section active" id="section-overview">
       <div class="stats-grid" id="overview-stats">
-        <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #D4AF37, #228B22);">👥</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-users">0</div>
-            <div class="stat-label">Membres NGD</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #228B22, #0d1f0d);">📢</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-campaigns">0</div>
-            <div class="stat-label">Campagnes</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #D4AF37, #b8860b);">🛒</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-orders">0</div>
-            <div class="stat-label">Commandes TCL</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #228B22, #D4AF37);">💰</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-revenue">0 FCFA</div>
-            <div class="stat-label">Chiffre d'affaires</div>
-          </div>
-        </div>
+        <div class="loading"><span class="spinner"></span> Chargement...</div>
       </div>
-
-      <!-- BOT STATS -->
       <div class="card mt-20">
         <div class="card-header">
           <h3>🤖 Stats Bot <span class="badge badge-info" id="bot-version">v1.2.0</span></h3>
@@ -115,78 +69,25 @@
         </div>
         <div class="card-body">
           <div class="stats-grid" style="margin-bottom:16px;">
-            <div class="stat-card">
-              <div class="stat-icon" style="background:#3b82f6;">💬</div>
-              <div class="stat-info">
-                <div class="stat-value" id="bot-conversations">0</div>
-                <div class="stat-label">Conversations</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background:#f59e0b;">⚡</div>
-              <div class="stat-info">
-                <div class="stat-value" id="bot-active">0</div>
-                <div class="stat-label">Actives</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background:#10b981;">🎯</div>
-              <div class="stat-info">
-                <div class="stat-value" id="bot-leads">0</div>
-                <div class="stat-label">Leads</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background:#8b5cf6;">✅</div>
-              <div class="stat-info">
-                <div class="stat-value" id="bot-conversions">0</div>
-                <div class="stat-label">Conversions</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background:#ec4899;">📩</div>
-              <div class="stat-info">
-                <div class="stat-value" id="bot-messages">0</div>
-                <div class="stat-label">Messages</div>
-              </div>
-            </div>
+            <div class="stat-card"><div class="stat-icon" style="background:#3b82f6;">💬</div><div class="stat-info"><div class="stat-value" id="bot-conversations">0</div><div class="stat-label">Conversations</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#f59e0b;">⚡</div><div class="stat-info"><div class="stat-value" id="bot-active">0</div><div class="stat-label">Actives</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#10b981;">🎯</div><div class="stat-info"><div class="stat-value" id="bot-leads">0</div><div class="stat-label">Leads</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#8b5cf6;">✅</div><div class="stat-info"><div class="stat-value" id="bot-conversions">0</div><div class="stat-label">Conversions</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#ec4899;">📩</div><div class="stat-info"><div class="stat-value" id="bot-messages">0</div><div class="stat-label">Messages</div></div></div>
           </div>
           <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:20px;">
-            <div class="stat-card" style="justify-content:center;">
-              <div class="stat-info" style="text-align:center;">
-                <div class="stat-value" id="bot-week-leads" style="font-size:20px;">0</div>
-                <div class="stat-label">Leads (7j)</div>
-              </div>
-            </div>
-            <div class="stat-card" style="justify-content:center;">
-              <div class="stat-info" style="text-align:center;">
-                <div class="stat-value" id="bot-week-conversions" style="font-size:20px;">0</div>
-                <div class="stat-label">Conversions (7j)</div>
-              </div>
-            </div>
-            <div class="stat-card" style="justify-content:center;">
-              <div class="stat-info" style="text-align:center;">
-                <div class="stat-value" id="bot-week-messages" style="font-size:20px;">0</div>
-                <div class="stat-label">Messages (7j)</div>
-              </div>
-            </div>
+            <div class="stat-card" style="justify-content:center;"><div class="stat-info" style="text-align:center;"><div class="stat-value" id="bot-week-leads" style="font-size:20px;">0</div><div class="stat-label">Leads (7j)</div></div></div>
+            <div class="stat-card" style="justify-content:center;"><div class="stat-info" style="text-align:center;"><div class="stat-value" id="bot-week-conversions" style="font-size:20px;">0</div><div class="stat-label">Conversions (7j)</div></div></div>
+            <div class="stat-card" style="justify-content:center;"><div class="stat-info" style="text-align:center;"><div class="stat-value" id="bot-week-messages" style="font-size:20px;">0</div><div class="stat-label">Messages (7j)</div></div></div>
           </div>
-          <div style="height:240px;position:relative;">
-            <canvas id="bot-stats-chart"></canvas>
-          </div>
+          <div style="height:240px;position:relative;"><canvas id="bot-stats-chart"></canvas></div>
           <div id="bot-stats-error" style="color:#e74c3c;font-size:12px;text-align:center;margin-top:8px;"></div>
         </div>
       </div>
-
-      <!-- Coalition Progress -->
       <div class="card mt-20">
-        <div class="card-header">
-          <h3>🗳️ Coalition 509 — Progression</h3>
-        </div>
+        <div class="card-header"><h3>🗳️ Coalition 509 — Progression</h3></div>
         <div class="card-body">
-          <div class="progress-bar-container">
-            <div class="progress-bar" id="coalition-progress" style="width: 0%;"></div>
-          </div>
+          <div class="progress-bar-container"><div class="progress-bar" id="coalition-progress" style="width: 0%;"></div></div>
           <p class="progress-text" id="coalition-text">0 / 232 groupes créés</p>
         </div>
       </div>
@@ -208,29 +109,14 @@
           <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
             <input type="text" id="camp-filter-search" placeholder="Rechercher..." style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;flex:1;min-width:200px;">
             <select id="camp-filter-status" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;background:#fff;">
-              <option value="">Tous les statuts</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="">Tous les statuts</option><option value="active">Active</option><option value="inactive">Inactive</option>
             </select>
             <input type="text" id="camp-filter-region" placeholder="Région" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
             <button class="btn btn-primary" id="camp-filter-apply">Filtrer</button>
           </div>
           <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Région</th>
-                  <th>Commune</th>
-                  <th>Date</th>
-                  <th>Statut</th>
-                  <th>Description</th>
-                  <th style="text-align:right">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="campaigns-table-body">
-                <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
-              </tbody>
+            <table><thead><tr><th>Nom</th><th>Région</th><th>Commune</th><th>Date</th><th>Statut</th><th>Description</th><th style="text-align:right">Actions</th></tr></thead>
+            <tbody id="campaigns-table-body"><tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
             </table>
           </div>
           <div id="campaigns-pagination" style="margin-top:16px;"></div>
@@ -240,58 +126,150 @@
 
     <!-- ===== SECTION: USERS ===== -->
     <section class="section" id="section-users">
-      <div class="topbar section-topbar" style="margin-bottom:20px;">
-        <h1>👥 Utilisateurs</h1>
-      </div>
+      <div class="topbar section-topbar" style="margin-bottom:20px;"><h1>👥 Utilisateurs</h1></div>
       <div class="card">
         <div class="card-body">
           <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Téléphone</th>
-                  <th>Email</th>
-                  <th>Profil</th>
-                  <th>Région</th>
-                  <th>Statut</th>
-                  <th>Inscrit</th>
-                </tr>
-              </thead>
-              <tbody id="users-table-body">
-                <tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>
-              </tbody>
+            <table><thead><tr><th>Nom</th><th>Téléphone</th><th>Email</th><th>Profil</th><th>Région</th><th>Statut</th><th>Inscrit</th></tr></thead>
+            <tbody id="users-table-body"><tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ===== SECTION: ORDERS ===== -->
-    <section class="section" id="section-orders">
+    <!-- ===== SECTION: SHOP (8 sous-onglets) ===== -->
+    <section class="section" id="section-shop">
       <div class="topbar section-topbar" style="margin-bottom:20px;">
-        <h1>🛒 Commandes TCL</h1>
+        <h1>🛒 Commandes</h1>
+        <div id="shop-admin-actions" style="display:none;">
+          <button class="btn btn-primary" id="btn-add-product">+ Produit</button>
+          <button class="btn btn-primary" id="btn-add-supplier" style="margin-left:8px;">+ Fournisseur</button>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-body">
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>N°</th>
-                  <th>Client</th>
-                  <th>Montant</th>
-                  <th>Région</th>
-                  <th>Statut</th>
-                  <th>Paiement</th>
-                  <th>Date</th>
-                  <th style="text-align:right">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="orders-table-body">
-                <tr><td colspan="8" class="loading"><span class="spinner"></span> Chargement...</td></tr>
-              </tbody>
-            </table>
+
+      <!-- Tabs internes -->
+      <div class="shop-tabs" style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;border-bottom:2px solid #e8eaed;padding-bottom:8px;">
+        <button class="shop-tab-btn active" data-shop-tab="catalogue">📦 Catalogue</button>
+        <button class="shop-tab-btn" data-shop-tab="cart">🛒 Panier <span id="cart-badge" class="badge badge-danger" style="display:none;">0</span></button>
+        <button class="shop-tab-btn" data-shop-tab="orders">📋 Commandes</button>
+        <button class="shop-tab-btn" data-shop-tab="suppliers">🏭 Fournisseurs</button>
+        <button class="shop-tab-btn" data-shop-tab="deliveries">🚚 Livraisons</button>
+        <button class="shop-tab-btn" data-shop-tab="payments">💳 Paiements</button>
+        <button class="shop-tab-btn" data-shop-tab="invoices">📄 Factures</button>
+        <button class="shop-tab-btn" data-shop-tab="stock">📊 Stocks</button>
+      </div>
+
+      <!-- SOUS-ONGLET : CATALOGUE -->
+      <div class="shop-tab-content active" id="shop-tab-catalogue">
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          <input type="text" id="prod-filter-search" placeholder="Rechercher un produit..." style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;flex:1;min-width:200px;">
+          <select id="prod-filter-category" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;background:#fff;">
+            <option value="">Toutes catégories</option><option value="textile">Textile</option><option value="imprimerie">Imprimerie</option><option value="general">Général</option>
+          </select>
+          <button class="btn btn-primary" id="prod-filter-apply">Filtrer</button>
+        </div>
+        <div id="products-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+          <div class="loading" style="grid-column:1/-1;"><span class="spinner"></span> Chargement des produits...</div>
+        </div>
+      </div>
+
+      <!-- SOUS-ONGLET : PANIER -->
+      <div class="shop-tab-content" id="shop-tab-cart">
+        <div class="card">
+          <div class="card-body">
+            <div id="cart-container">
+              <p style="text-align:center;color:#888;padding:40px;">Votre panier est vide</p>
+            </div>
+            <div id="cart-actions" style="display:none;margin-top:16px;text-align:right;">
+              <button class="btn btn-secondary" id="btn-clear-cart" style="margin-right:8px;">Vider</button>
+              <button class="btn btn-primary" id="btn-checkout">🛒 Commander</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOUS-ONGLET : COMMANDES -->
+      <div class="shop-tab-content" id="shop-tab-orders">
+        <div class="card">
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>N°</th><th>Client</th><th>Montant</th><th>Statut</th><th>Paiement</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody id="shop-orders-table-body"><tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
+              </table>
+            </div>
+            <div id="shop-orders-pagination" style="margin-top:16px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOUS-ONGLET : FOURNISSEURS -->
+      <div class="shop-tab-content" id="shop-tab-suppliers">
+        <div class="card">
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>Nom</th><th>Contact</th><th>Téléphone</th><th>Email</th><th>Région</th><th>Statut</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody id="suppliers-table-body"><tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOUS-ONGLET : LIVRAISONS -->
+      <div class="shop-tab-content" id="shop-tab-deliveries">
+        <div class="card">
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>N° Commande</th><th>Statut</th><th>Tracking</th><th>Adresse</th><th>Région</th><th>Date estimée</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody id="deliveries-table-body"><tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOUS-ONGLET : PAIEMENTS -->
+      <div class="shop-tab-content" id="shop-tab-payments">
+        <div class="card">
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>N° Commande</th><th>Montant</th><th>Méthode</th><th>Statut</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody id="payments-table-body"><tr><td colspan="6" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOUS-ONGLET : FACTURES -->
+      <div class="shop-tab-content" id="shop-tab-invoices">
+        <div class="card">
+          <div class="card-body">
+            <div class="table-container">
+              <table><thead><tr><th>N° Facture</th><th>N° Commande</th><th>Montant</th><th>Statut</th><th>Émise</th><th>Échéance</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody id="invoices-table-body"><tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOUS-ONGLET : STOCKS -->
+      <div class="shop-tab-content" id="shop-tab-stock">
+        <div class="card">
+          <div class="card-body">
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+              <select id="stock-filter-product" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;background:#fff;flex:1;min-width:200px;">
+                <option value="">Tous les produits</option>
+              </select>
+              <button class="btn btn-primary" id="stock-filter-apply">Filtrer</button>
+            </div>
+            <div class="table-container">
+              <table><thead><tr><th>Produit</th><th>Type</th><th>Qté</th><th>Raison</th><th>Date</th></tr></thead>
+              <tbody id="stock-table-body"><tr><td colspan="5" class="loading"><span class="spinner"></span> Chargement...</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -299,14 +277,10 @@
 
     <!-- ===== SECTION: PROFILE ===== -->
     <section class="section" id="section-profile">
-      <div class="topbar section-topbar" style="margin-bottom:20px;">
-        <h1>👤 Mon Profil</h1>
-      </div>
+      <div class="topbar section-topbar" style="margin-bottom:20px;"><h1>👤 Mon Profil</h1></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div class="card">
-          <div class="card-header">
-            <h3>Informations</h3>
-          </div>
+          <div class="card-header"><h3>Informations</h3></div>
           <div class="card-body">
             <div class="profile-body" style="padding:0;">
               <div class="profile-avatar-large" id="profile-avatar">U</div>
@@ -314,85 +288,35 @@
               <p id="profile-role" class="profile-role">—</p>
             </div>
             <div class="profile-details">
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">🆔 ID NGD</span>
-                <span class="profile-detail-value" id="prof-display-ngd">—</span>
-              </div>
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">👤 Nom complet</span>
-                <span class="profile-detail-value" id="prof-display-name">—</span>
-              </div>
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">📱 Téléphone</span>
-                <span class="profile-detail-value" id="prof-display-phone">—</span>
-              </div>
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">📧 Email</span>
-                <span class="profile-detail-value" id="prof-display-email">—</span>
-              </div>
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">📍 Région</span>
-                <span class="profile-detail-value" id="prof-display-region">—</span>
-              </div>
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">🏙️ Commune</span>
-                <span class="profile-detail-value" id="prof-display-commune">—</span>
-              </div>
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">🎭 Rôle</span>
-                <span class="profile-detail-value" id="prof-display-role">—</span>
-              </div>
-              <div class="profile-detail-row">
-                <span class="profile-detail-label">🎯 Profil</span>
-                <span class="profile-detail-value" id="prof-display-profile">—</span>
-              </div>
+              <div class="profile-detail-row"><span class="profile-detail-label">🆔 ID NGD</span><span class="profile-detail-value" id="prof-display-ngd">—</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">👤 Nom complet</span><span class="profile-detail-value" id="prof-display-name">—</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">📱 Téléphone</span><span class="profile-detail-value" id="prof-display-phone">—</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">📧 Email</span><span class="profile-detail-value" id="prof-display-email">—</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">📍 Région</span><span class="profile-detail-value" id="prof-display-region">—</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">🏙️ Commune</span><span class="profile-detail-value" id="prof-display-commune">—</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">🎭 Rôle</span><span class="profile-detail-value" id="prof-display-role">—</span></div>
+              <div class="profile-detail-row"><span class="profile-detail-label">🎯 Profil</span><span class="profile-detail-value" id="prof-display-profile">—</span></div>
             </div>
           </div>
         </div>
         <div class="card">
-          <div class="card-header">
-            <h3>✏️ Modifier mon profil</h3>
-          </div>
+          <div class="card-header"><h3>✏️ Modifier mon profil</h3></div>
           <div class="card-body">
             <form id="form-profile">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Prénom</label>
-                  <input type="text" id="prof-first-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-                </div>
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Nom</label>
-                  <input type="text" id="prof-last-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-                </div>
+                <div class="form-group" style="margin-bottom:0;"><label>Prénom</label><input type="text" id="prof-first-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
+                <div class="form-group" style="margin-bottom:0;"><label>Nom</label><input type="text" id="prof-last-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
               </div>
-              <div class="form-group">
-                <label>Téléphone</label>
-                <input type="tel" id="prof-phone" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-              </div>
-              <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="prof-email" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-              </div>
+              <div class="form-group"><label>Téléphone</label><input type="tel" id="prof-phone" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
+              <div class="form-group"><label>Email</label><input type="email" id="prof-email" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Région</label>
-                  <input type="text" id="prof-region-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-                </div>
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Commune</label>
-                  <input type="text" id="prof-commune-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-                </div>
+                <div class="form-group" style="margin-bottom:0;"><label>Région</label><input type="text" id="prof-region-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
+                <div class="form-group" style="margin-bottom:0;"><label>Commune</label><input type="text" id="prof-commune-input" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
               </div>
               <hr style="margin:16px 0;border:none;border-top:1px solid #e8eaed;">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Nouveau PIN (4 chiffres)</label>
-                  <input type="password" id="prof-new-pin" maxlength="4" placeholder="Laisser vide" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-                </div>
-                <div class="form-group" style="margin-bottom:0;">
-                  <label>Confirmer le PIN</label>
-                  <input type="password" id="prof-confirm-pin" maxlength="4" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;">
-                </div>
+                <div class="form-group" style="margin-bottom:0;"><label>Nouveau PIN (4 chiffres)</label><input type="password" id="prof-new-pin" maxlength="4" placeholder="Laisser vide" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
+                <div class="form-group" style="margin-bottom:0;"><label>Confirmer le PIN</label><input type="password" id="prof-confirm-pin" maxlength="4" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;"></div>
               </div>
               <button type="submit" class="btn-submit">💾 Enregistrer les modifications</button>
             </form>
@@ -402,80 +326,39 @@
     </section>
   </main>
 
-  <!-- ========== BOTTOM NAV (Mobile) ========== -->
+  <!-- BOTTOM NAV -->
   <nav class="bottom-nav" id="bottom-nav">
-    <a class="bottom-nav-item active" data-section="overview" href="#">
-      <span class="bottom-nav-icon">📊</span>
-      <span class="bottom-nav-label">Accueil</span>
-    </a>
-    <a class="bottom-nav-item" data-section="campaigns" href="#">
-      <span class="bottom-nav-icon">📢</span>
-      <span class="bottom-nav-label">Campagnes</span>
-    </a>
-    <a class="bottom-nav-item" data-section="orders" href="#" id="bottom-nav-orders" style="display:none;">
-      <span class="bottom-nav-icon">🛒</span>
-      <span class="bottom-nav-label">Commandes</span>
-    </a>
-    <a class="bottom-nav-item" data-section="profile" href="#">
-      <span class="bottom-nav-icon">👤</span>
-      <span class="bottom-nav-label">Profil</span>
-    </a>
+    <a class="bottom-nav-item active" data-section="overview" href="#"><span class="bottom-nav-icon">📊</span><span class="bottom-nav-label">Accueil</span></a>
+    <a class="bottom-nav-item" data-section="campaigns" href="#"><span class="bottom-nav-icon">📢</span><span class="bottom-nav-label">Campagnes</span></a>
+    <a class="bottom-nav-item" data-section="shop" href="#" id="bottom-nav-shop" style="display:none;"><span class="bottom-nav-icon">🛒</span><span class="bottom-nav-label">Commandes</span></a>
+    <a class="bottom-nav-item" data-section="profile" href="#"><span class="bottom-nav-icon">👤</span><span class="bottom-nav-label">Profil</span></a>
   </nav>
 
-  <!-- ========== MODAL: Campaign ========== -->
+  <!-- MODAL: Campaign -->
   <div class="modal-overlay" id="modal-campaign-overlay">
     <div class="modal">
-      <div class="modal-header">
-        <h3 id="modal-campaign-title">Nouvelle campagne</h3>
-        <button class="modal-close" id="modal-campaign-close">&times;</button>
-      </div>
+      <div class="modal-header"><h3 id="modal-campaign-title">Nouvelle campagne</h3><button class="modal-close" id="modal-campaign-close">&times;</button></div>
       <div class="modal-body">
         <form id="form-campaign">
-          <div class="form-group">
-            <label>Nom de la campagne *</label>
-            <input type="text" id="camp-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
-          </div>
+          <div class="form-group"><label>Nom de la campagne *</label><input type="text" id="camp-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Type d'élection *</label>
+            <div class="form-group" style="margin-bottom:0;"><label>Type d'élection *</label>
               <select id="camp-type" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
-                <option value="">Choisir...</option>
-                <option value="Presidentielle">Présidentielle</option>
-                <option value="Senatoriales">Sénatoriales</option>
-                <option value="Depute">Député</option>
-                <option value="Municipales">Municipales</option>
+                <option value="">Choisir...</option><option value="Presidentielle">Présidentielle</option><option value="Senatoriales">Sénatoriales</option><option value="Depute">Député</option><option value="Municipales">Municipales</option>
               </select>
             </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Date de l'élection</label>
-              <input type="date" id="camp-date" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
-            </div>
+            <div class="form-group" style="margin-bottom:0;"><label>Date de l'élection</label><input type="date" id="camp-date" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Région *</label>
-              <input type="text" id="camp-region" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Commune</label>
-              <input type="text" id="camp-commune" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
-            </div>
+            <div class="form-group" style="margin-bottom:0;"><label>Région *</label><input type="text" id="camp-region" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Commune</label><input type="text" id="camp-commune" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
           </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea id="camp-desc" rows="3" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;font-family:inherit;"></textarea>
-          </div>
+          <div class="form-group"><label>Description</label><textarea id="camp-desc" rows="3" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;font-family:inherit;"></textarea></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Prix HT (FCFA)</label>
-              <input type="number" id="camp-price" value="0" min="0" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Modèle de tarification</label>
+            <div class="form-group" style="margin-bottom:0;"><label>Prix HT (FCFA)</label><input type="number" id="camp-price" value="0" min="0" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Modèle de tarification</label>
               <select id="camp-pricing" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
-                <option value="forfait">Forfait</option>
-                <option value="abonnement">Abonnement</option>
-                <option value="commission">Commission</option>
+                <option value="forfait">Forfait</option><option value="abonnement">Abonnement</option><option value="commission">Commission</option>
               </select>
             </div>
           </div>
@@ -488,34 +371,86 @@
     </div>
   </div>
 
-  <!-- ========== MODAL: Payment ========== -->
+  <!-- MODAL: Product -->
+  <div class="modal-overlay" id="modal-product-overlay">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header"><h3 id="modal-product-title">Nouveau produit</h3><button class="modal-close" id="modal-product-close">&times;</button></div>
+      <div class="modal-body">
+        <form id="form-product">
+          <input type="hidden" id="prod-edit-id">
+          <div class="form-group"><label>Nom *</label><input type="text" id="prod-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Catégorie</label>
+              <select id="prod-category" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+                <option value="general">Général</option><option value="textile">Textile</option><option value="imprimerie">Imprimerie</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;"><label>Prix (FCFA) *</label><input type="number" id="prod-price" required min="0" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Stock *</label><input type="number" id="prod-stock" required min="0" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Fournisseur</label><select id="prod-supplier" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;"><option value="">—</option></select></div>
+          </div>
+          <div class="form-group"><label>Description</label><textarea id="prod-desc" rows="2" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;font-family:inherit;"></textarea></div>
+          <div class="form-group"><label>Image URL</label><input type="text" id="prod-image" placeholder="https://..." style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div class="modal-footer" style="padding:0;border:none;">
+            <button type="button" class="btn btn-secondary" id="modal-product-cancel">Annuler</button>
+            <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Supplier -->
+  <div class="modal-overlay" id="modal-supplier-overlay">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header"><h3 id="modal-supplier-title">Nouveau fournisseur</h3><button class="modal-close" id="modal-supplier-close">&times;</button></div>
+      <div class="modal-body">
+        <form id="form-supplier">
+          <input type="hidden" id="supp-edit-id">
+          <div class="form-group"><label>Nom *</label><input type="text" id="supp-name" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Contact</label><input type="text" id="supp-contact" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Téléphone</label><input type="tel" id="supp-phone" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          </div>
+          <div class="form-group"><label>Email</label><input type="email" id="supp-email" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Région</label><input type="text" id="supp-region" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Commune</label><input type="text" id="supp-commune" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          </div>
+          <div class="form-group"><label>Adresse</label><textarea id="supp-address" rows="2" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;font-family:inherit;"></textarea></div>
+          <div class="modal-footer" style="padding:0;border:none;">
+            <button type="button" class="btn btn-secondary" id="modal-supplier-cancel">Annuler</button>
+            <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Order Detail -->
+  <div class="modal-overlay" id="modal-order-detail-overlay">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header"><h3>📋 Détail commande</h3><button class="modal-close" id="modal-order-detail-close">&times;</button></div>
+      <div class="modal-body" id="order-detail-body"><p>Chargement...</p></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Payment -->
   <div class="modal-overlay" id="modal-payment-overlay">
     <div class="modal" style="max-width:420px;">
-      <div class="modal-header">
-        <h3>💳 Paiement</h3>
-        <button class="modal-close" id="modal-payment-close">&times;</button>
-      </div>
+      <div class="modal-header"><h3>💳 Paiement</h3><button class="modal-close" id="modal-payment-close">&times;</button></div>
       <div class="modal-body">
         <form id="form-payment">
           <input type="hidden" id="pay-order-id">
-          <div class="form-group">
-            <label>Montant</label>
-            <div id="pay-amount" style="font-size:20px;font-weight:700;color:#228B22;">0 FCFA</div>
-          </div>
-          <div class="form-group">
-            <label>Méthode de paiement</label>
+          <div class="form-group"><label>Montant</label><div id="pay-amount" style="font-size:20px;font-weight:700;color:#228B22;">0 FCFA</div></div>
+          <div class="form-group"><label>Méthode de paiement</label>
             <select id="pay-method" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
-              <option value="wave">Wave</option>
-              <option value="moncash">MonCash (Digicel)</option>
-              <option value="natcash">NatCash (Natcom)</option>
-              <option value="paypal">PayPal</option>
-              <option value="stripe">Carte bancaire (Stripe)</option>
+              <option value="wave">Wave</option><option value="moncash">MonCash (Digicel)</option><option value="natcash">NatCash (Natcom)</option><option value="paypal">PayPal</option><option value="stripe">Carte bancaire (Stripe)</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>Numéro de téléphone (pour Wave/MonCash/NatCash)</label>
-            <input type="tel" id="pay-phone" placeholder="Ex: 50912345678" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;">
-          </div>
+          <div class="form-group"><label>Numéro de téléphone</label><input type="tel" id="pay-phone" placeholder="Ex: 50912345678" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
           <div id="pay-instructions" style="display:none;padding:12px;background:#e8f5e9;border-radius:10px;margin-bottom:12px;font-size:13px;color:#2e7d32;"></div>
           <button type="submit" class="btn-submit">🚀 Initier le paiement</button>
           <button type="button" id="btn-confirm-payment" class="btn-submit" style="display:none;background:linear-gradient(135deg,#228B22,#0d1f0d);margin-top:8px;">✅ Confirmer le paiement</button>
@@ -524,9 +459,35 @@
     </div>
   </div>
 
-  <!-- ========== TOAST ========== -->
+  <!-- MODAL: Stock -->
+  <div class="modal-overlay" id="modal-stock-overlay">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header"><h3>📊 Ajuster le stock</h3><button class="modal-close" id="modal-stock-close">&times;</button></div>
+      <div class="modal-body">
+        <form id="form-stock">
+          <input type="hidden" id="stock-product-id">
+          <div class="form-group"><label>Produit</label><div id="stock-product-name" style="font-weight:600;">—</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Type</label>
+              <select id="stock-type" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+                <option value="in">Entrée (+)</option><option value="out">Sortie (-)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;"><label>Quantité</label><input type="number" id="stock-qty" required min="1" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          </div>
+          <div class="form-group"><label>Raison</label><input type="text" id="stock-reason" placeholder="Ajustement manuel" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div class="modal-footer" style="padding:0;border:none;">
+            <button type="button" class="btn btn-secondary" id="modal-stock-cancel">Annuler</button>
+            <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
   <div id="toast-container"></div>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
