@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.6.1 (match backend v2.9.1)
+   v1.6.2 (match backend v2.9.1)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
    ============================================================ */
@@ -141,6 +141,14 @@ async function getOrders(params) {
 }
 
 /* ========== SHOP API ========== */
+
+function setShopLoader(element, html, timeoutMsg) {
+  element.innerHTML = html;
+  return setTimeout(() => {
+    element.innerHTML = '<p style="text-align:center;padding:40px;color:#888;">' + (timeoutMsg || '⏳ Serveur en cours de réveil (Render free tier)... Patientez 30-60s.') + '</p>';
+  }, 8000);
+}
+
 async function shopListProducts(params) {
   const qs = new URLSearchParams(params || {}).toString();
   return api('/api/shop/products?' + qs);
@@ -707,6 +715,7 @@ async function loadCampaigns() {
   const tbody = document.getElementById('campaigns-table-body');
   tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
   try {
+    clearTimeout(timeoutId);
     const params = {};
     const search = document.getElementById('camp-filter-search')?.value?.trim();
     const status = document.getElementById('camp-filter-status')?.value;
@@ -1041,6 +1050,9 @@ function loadShop() {
 async function loadShopCatalogue() {
   const grid = document.getElementById('products-grid');
   grid.innerHTML = '<div class="loading" style="grid-column:1/-1;"><span class="spinner"></span> Chargement...</div>';
+  const timeoutId = setTimeout(() => {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">⏳ Le serveur se réveille (Render free tier)... Veuillez patienter 30-60s puis actualiser.</p>';
+  }, 8000);
   try {
     const params = {};
     const search = document.getElementById('prod-filter-search')?.value?.trim();
