@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.7.0 (match backend v2.9.1)
+   v1.7.1 (match backend v2.9.1)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
    ============================================================ */
@@ -431,6 +431,7 @@ function initAuthPage() {
 let botChartInstance = null;
 
 function initDashboardPage() {
+  console.log('[INIT] Dashboard v1.7.1 starting...');
   if (!getToken()) { window.location.href = 'index.html'; return; }
   // Injecte CSS dynamique pour cacher les sous-onglets Shop inactifs (évite conflit avec style.css)
   if (!document.getElementById('shop-tab-css')) {
@@ -444,7 +445,7 @@ function initDashboardPage() {
     if (!c.classList.contains('active')) c.style.display = 'none';
     else c.style.display = 'block';
   });
-  loadUserInfo();
+  loadUserInfo().catch(e => console.error('[loadUserInfo]', e));
   setupNavigation();
   setupGlobalListeners();
   setupShopListeners();
@@ -615,7 +616,10 @@ function loadSection(sectionName) {
   }
 
   switch (sectionName) {
-    case 'overview': loadOverview(); break;
+    case 'overview':
+      loadOverview().then(() => console.log('[OVERVIEW] Loaded')).catch(e => console.error('[OVERVIEW ERROR]', e));
+      loadBotStats().then(() => console.log('[BOT STATS] Loaded')).catch(e => console.error('[BOT STATS ERROR]', e));
+      break;
     case 'campaigns': loadCampaigns(); break;
     case 'users': loadUsers(); break;
     case 'shop': loadShop(); break;
@@ -635,10 +639,13 @@ function getSectionTitle(name) {
 }
 
 async function loadOverview() {
+  console.log('[OVERVIEW] loadOverview() called');
   const container = document.getElementById('overview-stats');
+  if (!container) { console.error('[OVERVIEW] overview-stats not found'); return; }
   container.innerHTML = '<div class="loading"><span class="spinner"></span> Chargement des statistiques...</div>';
   try {
     const stats = await getDashboardStats();
+    console.log('[OVERVIEW] stats received:', stats);
     const apiStatus = document.getElementById('api-status');
     if (apiStatus) { apiStatus.textContent = '● API CONNECTÉE'; apiStatus.className = 'badge badge-success'; }
 
@@ -660,11 +667,13 @@ async function loadOverview() {
       renderStatCard({ value: formatNumber(stats.total_products || 0), label: 'Produits', icon: '📦', type: 'primary' }) +
       renderStatCard({ value: formatNumber(stats.low_stock || 0), label: 'Stock faible', icon: '⚠️', type: 'danger' });
   } catch (err) {
-    if (err.handled) return;
-    container.innerHTML = '<div class="alert alert-error">Impossible de charger les statistiques : ' + err.message + '</div>';
+    console.error('[OVERVIEW] CATCH:', err);
+    if (err.handled) { console.log('[OVERVIEW] err.handled=true, returning silently'); return; }
+    container.innerHTML = '<div class="alert alert-error">Impossible de charger les statistiques : ' + (err.message || err) + '</div>';
     const apiStatus = document.getElementById('api-status');
     if (apiStatus) { apiStatus.textContent = '● API DÉCONNECTÉE'; apiStatus.className = 'badge badge-danger'; }
   }
+  console.log('[OVERVIEW] calling loadBotStats...');
   loadBotStats();
 }
 
@@ -1106,21 +1115,25 @@ function loadShop() {
 /* —— CATALOGUE —— */
 async function loadShopCatalogue() {
   const grid = document.getElementById('products-grid');
+  if (!grid) return;
   grid.innerHTML = '<div class="loading" style="grid-column:1/-1;"><span class="spinner"></span> Chargement...</div>';
   const timeoutId = setTimeout(() => {
-    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">⏳ Le serveur se réveille (Render free tier)... Veuillez patienter 30-60s puis actualiser.</p>';
+    if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">⏳ Le serveur se réveille (Render free tier)... Veuillez patienter 30-60s puis actualiser.</p>';
   }, 8000);
+  let apiTimeout = null;
   try {
     const params = {};
     const search = document.getElementById('prod-filter-search')?.value?.trim();
     const cat = document.getElementById('prod-filter-category')?.value;
     if (search) params.search = search;
     if (cat) params.category = cat;
+
     const controller = new AbortController();
-    const apiTimeout = setTimeout(() => controller.abort(), 15000);
+    apiTimeout = setTimeout(() => controller.abort(), 15000);
     const data = await shopListProducts(params, controller.signal);
     clearTimeout(apiTimeout);
     clearTimeout(timeoutId);
+
     shopProducts = normalizeList(data, 'products');
     if (shopProducts.length === 0) {
       grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">Aucun produit trouvé</p>';
@@ -1131,7 +1144,7 @@ async function loadShopCatalogue() {
       const low = (p.stock_quantity || 0) <= 5;
       return '<div class="product-card" style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;">' +
         '<div style="height:140px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
-        (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=&quot;font-size:48px;&quot;>📦</span>'">' : '<span style="font-size:48px;">📦</span>') +
+        (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;" data-fallback="📦">' : '<span style="font-size:48px;">📦</span>') +
         '</div>' +
         '<div><h4 style="margin:0;font-size:15px;">' + (p.name || '') + '</h4><small style="color:#888;">' + (p.category || '') + '</small></div>' +
         '<div style="font-weight:700;color:#228B22;font-size:16px;">' + formatCurrency(p.price) + '</div>' +
@@ -1142,11 +1155,20 @@ async function loadShopCatalogue() {
         '</div>' +
       '</div>';
     }).join('');
+
+    // Gestion fallback images sans onerror inline
+    grid.querySelectorAll('img[data-fallback]').forEach(img => {
+      img.onerror = function() {
+        this.onerror = null;
+        this.parentElement.innerHTML = '<span style="font-size:48px;">' + this.dataset.fallback + '</span>';
+      };
+    });
+
     updateSupplierSelects();
   } catch (err) {
     clearTimeout(timeoutId);
-    clearTimeout(apiTimeout);
-    if (!err.handled) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e60023;">' + err.message + '</p>';
+    if (apiTimeout) clearTimeout(apiTimeout);
+    if (!err.handled && grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e60023;">' + (err.message || 'Erreur catalogue') + '</p>';
   }
 }
 
