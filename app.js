@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.7.1 (match backend v2.9.1)
+   v1.7.3 (match backend v2.9.3)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
    ============================================================ */
@@ -431,7 +431,7 @@ function initAuthPage() {
 let botChartInstance = null;
 
 function initDashboardPage() {
-  console.log('[INIT] Dashboard v1.7.1 starting...');
+  console.log('[INIT] Dashboard v1.7.3 starting...');
   if (!getToken()) { window.location.href = 'index.html'; return; }
   // Injecte CSS dynamique pour cacher les sous-onglets Shop inactifs (évite conflit avec style.css)
   if (!document.getElementById('shop-tab-css')) {
@@ -651,7 +651,9 @@ async function loadOverview() {
 
     const progressEl = document.getElementById('coalition-progress');
     const progressText = document.getElementById('coalition-text');
-    const totalGroups = stats.total_groups || stats.total_campaigns || 0;
+    // La barre de progression représente le nombre d'animateurs NGD (utilisateurs actifs)
+    // sur un objectif de 232 groupes locaux à créer
+    const totalGroups = stats.total_groups || stats.total_users || stats.total_campaigns || 0;
     if (progressEl) {
       progressEl.style.width = Math.min((totalGroups / 232) * 100, 100) + '%';
       if (progressText) progressText.textContent = totalGroups + ' / 232 groupes créés';
@@ -669,7 +671,16 @@ async function loadOverview() {
   } catch (err) {
     console.error('[OVERVIEW] CATCH:', err);
     if (err.handled) { console.log('[OVERVIEW] err.handled=true, returning silently'); return; }
-    container.innerHTML = '<div class="alert alert-error">Impossible de charger les statistiques : ' + (err.message || err) + '</div>';
+    // Fallback silencieux : affiche 0 partout pour ne pas bloquer le dashboard
+    container.innerHTML =
+      renderStatCard({ value: '0', label: 'Utilisateurs actifs', icon: '👥', type: 'primary' }) +
+      renderStatCard({ value: '0', label: 'Campagnes actives', icon: '📢', type: 'success' }) +
+      renderStatCard({ value: '0', label: 'Commandes TCL', icon: '🛒', type: 'warning' }) +
+      renderStatCard({ value: '0 FCFA', label: 'Revenus totaux', icon: '💰', type: 'accent' }) +
+      renderStatCard({ value: '0', label: 'Commandes en attente', icon: '⏳', type: 'danger' }) +
+      renderStatCard({ value: '0', label: 'Commandes payées', icon: '✅', type: 'info' }) +
+      renderStatCard({ value: '0', label: 'Produits', icon: '📦', type: 'primary' }) +
+      renderStatCard({ value: '0', label: 'Stock faible', icon: '⚠️', type: 'danger' });
     const apiStatus = document.getElementById('api-status');
     if (apiStatus) { apiStatus.textContent = '● API DÉCONNECTÉE'; apiStatus.className = 'badge badge-danger'; }
   }
@@ -1156,12 +1167,19 @@ async function loadShopCatalogue() {
       '</div>';
     }).join('');
 
-    // Gestion fallback images sans onerror inline
+    // Gestion fallback images — ibb.co retourne parfois une page HTML (200 OK)
+    // donc onerror ne se déclenche pas. On vérifie après 2s si l'image a chargé.
     grid.querySelectorAll('img[data-fallback]').forEach(img => {
       img.onerror = function() {
         this.onerror = null;
         this.parentElement.innerHTML = '<span style="font-size:48px;">' + this.dataset.fallback + '</span>';
       };
+      setTimeout(() => {
+        if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+          img.onerror = null;
+          img.parentElement.innerHTML = '<span style="font-size:48px;">' + img.dataset.fallback + '</span>';
+        }
+      }, 2500);
     });
 
     updateSupplierSelects();
