@@ -726,6 +726,7 @@ async function loadBotStats() {
 async function loadCampaigns() {
   const tbody = document.getElementById('campaigns-table-body');
   tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
+  let timeoutId = null;
   try {
     clearTimeout(timeoutId);
     const params = {};
@@ -840,9 +841,12 @@ async function loadProfile() {
     if (freshUser && freshUser.id) { setUser(freshUser); user = freshUser; }
   } catch (e) {
     if (e.handled) return;
-    console.warn('getMe failed in loadProfile, using cached user');
+    console.warn('getMe failed in loadProfile, using cached user:', e.message);
   }
-  if (!user || !user.id) return;
+  if (!user || !user.id) {
+    console.warn('loadProfile: no user data available');
+    return;
+  }
 
   const initials = ((user.first_name?.[0] || '') + (user.last_name?.[0] || '')).toUpperCase();
   const setText = (id, val) => {
@@ -1093,7 +1097,8 @@ async function loadShopCatalogue() {
       grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">Aucun produit trouvé</p>';
       return;
     }
-    grid.innerHTML = shopProducts.map(p => {
+        clearTimeout(timeoutId);
+grid.innerHTML = shopProducts.map(p => {
       const low = (p.stock_quantity || 0) <= 5;
       return '<div class="product-card" style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;">' +
         '<div style="height:140px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
@@ -1110,6 +1115,7 @@ async function loadShopCatalogue() {
     }).join('');
     updateSupplierSelects();
   } catch (err) {
+    clearTimeout(timeoutId);
     if (!err.handled) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e60023;">' + err.message + '</p>';
   }
 }
