@@ -498,6 +498,10 @@ function setupGlobalListeners() {
     document.getElementById('modal-payment-overlay')?.classList.remove('active');
   });
 
+  document.getElementById('modal-campaign-detail-close')?.addEventListener('click', () => {
+    document.getElementById('modal-campaign-detail-overlay')?.classList.remove('active');
+  });
+
   document.getElementById('form-profile')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const newPin = document.getElementById('prof-new-pin')?.value;
@@ -510,7 +514,11 @@ function setupGlobalListeners() {
 
   document.querySelectorAll('[data-export]').forEach(btn => {
     btn.addEventListener('click', () => {
-      showToast('Export ' + btn.dataset.export + ' — bientôt disponible', 'info');
+      const type = btn.dataset.export;
+      const token = getToken();
+      if (!token) { showToast('Non connecté', 'error'); return; }
+      window.open(API_BASE_URL + '/api/v1/export/' + type + '?access_token=' + token);
+      showToast('Export ' + type + ' téléchargé ✅', 'success');
     });
   });
 }
@@ -802,8 +810,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-function viewCampaign(id) {
-  showToast('Détails de la campagne ' + id + ' — bientôt disponible', 'info');
+async function viewCampaign(id) {
+  try {
+    const data = await api('/api/campaigns/detail?id=' + id);
+    const c = data.campaign;
+    const body = document.getElementById('campaign-detail-body');
+    body.innerHTML = 
+      '<div class="campaign-detail-grid">' +
+      '<div class="campaign-detail-item"><span class="campaign-detail-label">Nom</span><span class="campaign-detail-value">' + (c.name || '—') + '</span></div>' +
+      '<div class="campaign-detail-item"><span class="campaign-detail-label">Statut</span><span class="campaign-detail-value">' + renderBadge(c.status === 'active' ? 'Active' : c.status, c.status === 'active' ? 'success' : 'warning') + '</span></div>' +
+      '<div class="campaign-detail-item"><span class="campaign-detail-label">Région</span><span class="campaign-detail-value">' + (c.region || '—') + '</span></div>' +
+      '<div class="campaign-detail-item"><span class="campaign-detail-label">Commune</span><span class="campaign-detail-value">' + (c.commune || '—') + '</span></div>' +
+      '<div class="campaign-detail-item"><span class="campaign-detail-label">Date élection</span><span class="campaign-detail-value">' + (c.election_date ? formatDate(c.election_date) : '—') + '</span></div>' +
+      '<div class="campaign-detail-item"><span class="campaign-detail-label">Créée le</span><span class="campaign-detail-value">' + formatDate(c.created_at) + '</span></div>' +
+      '<div class="campaign-detail-item full-width"><span class="campaign-detail-label">Description</span><span class="campaign-detail-value" style="font-weight:400;line-height:1.5;">' + (c.description || 'Aucune description') + '</span></div>' +
+      '</div>';
+    document.getElementById('modal-campaign-detail-overlay').classList.add('active');
+  } catch (err) {
+    if (!err.handled) showToast('Erreur chargement détails campagne', 'error');
+  }
 }
 
 async function loadUsers() {
@@ -1102,7 +1127,7 @@ grid.innerHTML = shopProducts.map(p => {
       const low = (p.stock_quantity || 0) <= 5;
       return '<div class="product-card" style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;">' +
         '<div style="height:140px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
-        (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;">' : '<span style="font-size:48px;">📦</span>') +
+        (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=\'font-size:48px;\'>📦</span>'">' : '<span style="font-size:48px;">📦</span>') +
         '</div>' +
         '<div><h4 style="margin:0;font-size:15px;">' + (p.name || '') + '</h4><small style="color:#888;">' + (p.category || '') + '</small></div>' +
         '<div style="font-weight:700;color:#228B22;font-size:16px;">' + formatCurrency(p.price) + '</div>' +
@@ -1260,8 +1285,13 @@ function showPaymentModal(orderId, amount) {
   const modal = document.getElementById('modal-payment-overlay');
   const orderInput = document.getElementById('pay-order-id');
   const amountDiv = document.getElementById('pay-amount');
+  const waveBtn = document.getElementById('pay-wave-btn');
   if (orderInput) orderInput.value = orderId || '';
   if (amountDiv) amountDiv.textContent = formatCurrency(amount);
+  if (waveBtn) {
+    waveBtn.href = 'https://pay.wave.com/m/M_ci_QlW5ke-hYGbA/c/ci/?amount=' + Math.round(amount || 0) + '&reference=C509-' + (orderId || '0');
+    waveBtn.style.display = 'inline-flex';
+  }
   if (modal) modal.classList.add('active');
 }
 
