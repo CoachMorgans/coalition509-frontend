@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.6.3 (match backend v2.9.1)
+   v1.7.0 (match backend v2.9.1)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
    ============================================================ */
@@ -86,7 +86,7 @@ async function api(endpoint, options) {
   const token = getToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...options, headers, signal: options.signal });
   const isAuthRoute = endpoint.includes('/auth/login') || endpoint.includes('/auth/register') || endpoint.includes('/auth/verify-bot-token');
 
   if (res.status === 401 && !isAuthRoute) {
@@ -149,9 +149,9 @@ function setShopLoader(element, html, timeoutMsg) {
   }, 8000);
 }
 
-async function shopListProducts(params) {
+async function shopListProducts(params, signal) {
   const qs = new URLSearchParams(params || {}).toString();
-  return api('/api/shop/products?' + qs);
+  return api('/api/shop/products?' + qs, { signal });
 }
 async function shopCreateProduct(data) {
   return api('/api/shop/products', { method: 'POST', body: JSON.stringify(data) });
@@ -1116,18 +1116,22 @@ async function loadShopCatalogue() {
     const cat = document.getElementById('prod-filter-category')?.value;
     if (search) params.search = search;
     if (cat) params.category = cat;
-    const data = await shopListProducts(params);
+    const controller = new AbortController();
+    const apiTimeout = setTimeout(() => controller.abort(), 15000);
+    const data = await shopListProducts(params, controller.signal);
+    clearTimeout(apiTimeout);
+    clearTimeout(timeoutId);
     shopProducts = normalizeList(data, 'products');
     if (shopProducts.length === 0) {
       grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">Aucun produit trouvé</p>';
       return;
     }
-        clearTimeout(timeoutId);
-grid.innerHTML = shopProducts.map(p => {
+
+    grid.innerHTML = shopProducts.map(p => {
       const low = (p.stock_quantity || 0) <= 5;
       return '<div class="product-card" style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;">' +
         '<div style="height:140px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">' +
-        (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=\'font-size:48px;\'>📦</span>'">' : '<span style="font-size:48px;">📦</span>') +
+        (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<span style=&quot;font-size:48px;&quot;>📦</span>'">' : '<span style="font-size:48px;">📦</span>') +
         '</div>' +
         '<div><h4 style="margin:0;font-size:15px;">' + (p.name || '') + '</h4><small style="color:#888;">' + (p.category || '') + '</small></div>' +
         '<div style="font-weight:700;color:#228B22;font-size:16px;">' + formatCurrency(p.price) + '</div>' +
@@ -1141,6 +1145,7 @@ grid.innerHTML = shopProducts.map(p => {
     updateSupplierSelects();
   } catch (err) {
     clearTimeout(timeoutId);
+    clearTimeout(apiTimeout);
     if (!err.handled) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e60023;">' + err.message + '</p>';
   }
 }
