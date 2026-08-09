@@ -5,7 +5,7 @@
   <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Coalition 509 — Tableau de bord</title>
-  <link rel="stylesheet" href="style.css?v=23">
+  <link rel="stylesheet" href="style.css?v=24">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   .shop-tab-content { display: none !important; }
@@ -375,6 +375,14 @@
     </div>
   </div>
 
+  <!-- MODAL: Campaign Detail -->
+  <div class="modal-overlay" id="modal-campaign-detail-overlay">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header"><h3>📋 Détails de la campagne</h3><button class="modal-close" id="modal-campaign-detail-close">&times;</button></div>
+      <div class="modal-body" id="campaign-detail-body"><p>Chargement...</p></div>
+    </div>
+  </div>
+
   <!-- MODAL: Product -->
   <div class="modal-overlay" id="modal-product-overlay">
     <div class="modal" style="max-width:520px;">
@@ -441,22 +449,37 @@
     </div>
   </div>
 
-  <!-- MODAL: Payment -->
+  <!-- MODAL: Payment (Wave Money + Legacy) -->
   <div class="modal-overlay" id="modal-payment-overlay">
     <div class="modal" style="max-width:420px;">
       <div class="modal-header"><h3>💳 Paiement</h3><button class="modal-close" id="modal-payment-close">&times;</button></div>
       <div class="modal-body">
         <form id="form-payment">
           <input type="hidden" id="pay-order-id">
-          <div class="form-group"><label>Montant</label><div id="pay-amount" style="font-size:20px;font-weight:700;color:#228B22;">0 FCFA</div></div>
-          <div class="form-group"><label>Méthode de paiement</label>
+          <div class="form-group"><label>Montant</label><div id="pay-amount" style="font-size:24px;font-weight:700;color:#228B22;">0 FCFA</div></div>
+
+          <!-- WAVE MONEY MARCHAND -->
+          <div class="form-group" style="margin-bottom:16px;">
+            <a id="pay-wave-btn" href="#" target="_blank" class="btn-submit" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#1ba7cc,#0e7a96);width:100%;">
+              <span>📱</span> Payer avec Wave Money
+            </a>
+            <small style="display:block;text-align:center;color:#888;margin-top:6px;">Vous serez redirigé vers la plateforme sécurisée Wave</small>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e8eaed;margin:16px 0;">
+
+          <div class="form-group"><label>Méthode alternative</label>
             <select id="pay-method" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
-              <option value="wave">Wave</option><option value="moncash">MonCash (Digicel)</option><option value="natcash">NatCash (Natcom)</option><option value="paypal">PayPal</option><option value="stripe">Carte bancaire (Stripe)</option>
+              <option value="wave_direct">Wave (direct)</option>
+              <option value="moncash">MonCash (Digicel)</option>
+              <option value="natcash">NatCash (Natcom)</option>
+              <option value="paypal">PayPal</option>
+              <option value="stripe">Carte bancaire (Stripe)</option>
             </select>
           </div>
-          <div class="form-group"><label>Numéro de téléphone</label><input type="tel" id="pay-phone" placeholder="Ex: 50912345678" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div class="form-group"><label>Numéro de téléphone</label><input type="tel" id="pay-phone" placeholder="Ex: 0022507XXXXXXXX" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
           <div id="pay-instructions" style="display:none;padding:12px;background:#e8f5e9;border-radius:10px;margin-bottom:12px;font-size:13px;color:#2e7d32;"></div>
-          <button type="submit" class="btn-submit">🚀 Initier le paiement</button>
+          <button type="submit" class="btn-submit">🚀 Initier le paiement alternatif</button>
           <button type="button" id="btn-confirm-payment" class="btn-submit" style="display:none;background:linear-gradient(135deg,#228B22,#0d1f0d);margin-top:8px;">✅ Confirmer le paiement</button>
         </form>
       </div>
@@ -492,6 +515,6 @@
   <!-- TOAST -->
   <div id="toast-container"></div>
 
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>
