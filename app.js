@@ -439,6 +439,11 @@ function initDashboardPage() {
     s.textContent = '.shop-tab-content { display: none !important; } .shop-tab-content.active { display: block !important; }';
     document.head.appendChild(s);
   }
+  // FIX v1.6.4: init display sous-onglets Shop
+  document.querySelectorAll('.shop-tab-content').forEach(c => {
+    if (!c.classList.contains('active')) c.style.display = 'none';
+    else c.style.display = 'block';
+  });
   loadUserInfo();
   setupNavigation();
   setupGlobalListeners();
@@ -893,8 +898,15 @@ function setupShopListeners() {
       document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentShopTab = btn.dataset.shopTab;
-      document.querySelectorAll('.shop-tab-content').forEach(c => c.classList.remove('active'));
-      document.getElementById('shop-tab-' + currentShopTab)?.classList.add('active');
+      document.querySelectorAll('.shop-tab-content').forEach(c => {
+        c.classList.remove('active');
+        c.style.display = 'none';
+      });
+      const activeShopTab = document.getElementById('shop-tab-' + currentShopTab);
+      if (activeShopTab) {
+        activeShopTab.classList.add('active');
+        activeShopTab.style.display = 'block';
+      }
       refreshShopTab();
     });
   });
@@ -1050,6 +1062,15 @@ function refreshShopTab() {
 }
 
 function loadShop() {
+  document.querySelectorAll('.shop-tab-content').forEach(c => {
+    c.classList.remove('active');
+    c.style.display = 'none';
+  });
+  const activeTab = document.getElementById('shop-tab-' + currentShopTab);
+  if (activeTab) {
+    activeTab.classList.add('active');
+    activeTab.style.display = 'block';
+  }
   refreshShopTab();
 }
 
