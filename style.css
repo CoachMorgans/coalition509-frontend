@@ -1,5 +1,5 @@
 /* ============================================================
- Coalition 509 — Frontend SaaS | Style CSS v1.7.3
+ Coalition 509 — Frontend SaaS | Style CSS v1.7.4
  VoteConnect Ecosystem | ChallengeFinancier™
  Palette : Jaune — Blanc — Vert  |  Mobile-First Dashboard
  ============================================================ */
@@ -1140,4 +1140,37 @@ tbody tr:last-child td {
   .campaign-detail-grid {
     grid-template-columns: 1fr;
   }
+}
+
+
+/* ===== CHANTIER v1.7.4 : Qty Selector + Wave 1-clic ===== */
+.qty-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+.qty-selector input {
+  width: 52px;
+  text-align: center;
+  padding: 6px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0d1f0d;
+}
+.qty-selector button {
+  padding: 4px 10px;
+  font-size: 16px;
+  line-height: 1;
+  min-width: 32px;
+  user-select: none;
+}
+#btn-pay-wave {
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+#btn-pay-wave:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(14,122,150,0.35);
 }
