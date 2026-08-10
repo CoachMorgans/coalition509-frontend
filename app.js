@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.7.3 (match backend v2.9.3)
+   v1.7.4 (match backend v2.9.3)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
    ============================================================ */
@@ -1095,6 +1095,22 @@ function setupShopListeners() {
       loadShopOrders();
     } catch (err) { if (!err.handled) showToast(err.message, 'error'); }
   });
+  document.getElementById('btn-pay-wave')?.addEventListener('click', async () => {
+    try {
+      const user = getUser();
+      const data = await shopCreateOrder({ region: user.region || '', commune: user.commune || '' });
+      const order = data.order;
+      if (order && order.total_amount > 0) {
+        const waveUrl = 'https://pay.wave.com/m/M_ci_QlW5ke-hYGbA/c/ci/?amount=' + Math.round(order.total_amount) + '&reference=C509-' + (order.order_number || order.id);
+        window.open(waveUrl, '_blank');
+        showToast('Commande #' + order.order_number + ' créée — finalisez sur Wave', 'success');
+        loadShopCart();
+        loadShopOrders();
+      } else {
+        showToast('Panier vide ou montant invalide', 'warning');
+      }
+    } catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+  });
 }
 
 function refreshShopTab() {
@@ -1160,6 +1176,11 @@ async function loadShopCatalogue() {
         '<div><h4 style="margin:0;font-size:15px;">' + (p.name || '') + '</h4><small style="color:#888;">' + (p.category || '') + '</small></div>' +
         '<div style="font-weight:700;color:#228B22;font-size:16px;">' + formatCurrency(p.price) + '</div>' +
         '<div style="font-size:12px;color:' + (low ? '#e60023' : '#666') + ';">Stock: ' + (p.stock_quantity || 0) + (low ? ' ⚠️' : '') + '</div>' +
+        '<div class="qty-selector">' +
+          '<button class="btn btn-sm btn-secondary" onclick="adjustQty(' + p.id + ', -1)">−</button>' +
+          '<input type="number" id="qty-' + p.id + '" value="1" min="1" max="99">' +
+          '<button class="btn btn-sm btn-secondary" onclick="adjustQty(' + p.id + ', 1)">+</button>' +
+        '</div>' +
         '<div style="display:flex;gap:6px;margin-top:auto;">' +
           '<button class="btn btn-sm btn-primary" onclick="addToCart(' + p.id + ')" style="flex:1;">🛒 Ajouter</button>' +
           (isAdmin() ? '<button class="btn btn-sm btn-secondary" onclick="editProduct(' + p.id + ')">✏️</button>' : '') +
@@ -1192,8 +1213,10 @@ async function loadShopCatalogue() {
 
 async function addToCart(productId) {
   try {
-    await shopAddToCart(productId, 1);
-    showToast('Produit ajouté au panier', 'success');
+    const qtyInput = document.getElementById('qty-' + productId);
+    const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+    await shopAddToCart(productId, qty);
+    showToast(qty + 'x ajouté au panier', 'success');
     updateCartBadge();
   } catch (err) {
     if (!err.handled) showToast(err.message, 'error');
@@ -1202,6 +1225,14 @@ async function addToCart(productId) {
 
 function isAdmin() {
   return (getUser().role || '').toString().toLowerCase().trim() === 'admin';
+}
+
+function adjustQty(pid, delta) {
+  const inp = document.getElementById('qty-' + pid);
+  if (!inp) return;
+  let v = parseInt(inp.value) || 1;
+  v = Math.max(1, Math.min(99, v + delta));
+  inp.value = v;
 }
 
 function openProductModal(product) {
