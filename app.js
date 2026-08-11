@@ -1,7 +1,7 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.8.0 build 31 (match backend v2.9.5+)
+   v1.8.1 build 32 (match backend v2.9.5+)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
    Changelog v1.8.0 :
@@ -938,6 +938,7 @@ window.setApiUrl = function(url) {
 let currentShopTab = 'catalogue';
 let shopProducts = [];
 let shopSuppliers = [];
+let shopDeliveriesData = [];
 
 function setupShopListeners() {
   document.querySelectorAll('.shop-tab-btn').forEach(btn => {
@@ -1097,6 +1098,34 @@ function setupShopListeners() {
         showToast('Panier vide ou montant invalide', 'warning');
       }
     } catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+  });
+
+  /* —— Modal Livraison listeners —— */
+  document.getElementById('modal-delivery-close')?.addEventListener('click', closeDeliveryModal);
+  document.getElementById('modal-delivery-cancel')?.addEventListener('click', closeDeliveryModal);
+  document.getElementById('modal-delivery-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-delivery-overlay') closeDeliveryModal();
+  });
+  document.getElementById('form-delivery')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('delivery-edit-id')?.value;
+    if (!id) return;
+    const payload = {
+      id: id,
+      status: document.getElementById('delivery-status')?.value,
+      tracking_number: document.getElementById('delivery-tracking')?.value.trim() || null,
+      delivery_person: document.getElementById('delivery-person')?.value.trim() || null,
+      delivery_phone: document.getElementById('delivery-phone')?.value.trim() || null,
+      estimated_date: document.getElementById('delivery-estimated')?.value || null
+    };
+    try {
+      await shopUpdateDelivery(payload);
+      showToast('Livraison mise à jour ✅', 'success');
+      closeDeliveryModal();
+      loadShopDeliveries();
+    } catch (err) {
+      if (!err.handled) showToast(err.message || 'Erreur mise à jour livraison', 'error');
+    }
   });
 }
 
@@ -1457,6 +1486,7 @@ async function loadShopDeliveries() {
   try {
     const data = await shopListDeliveries({ limit: 50 });
     const deliveries = normalizeList(data, 'deliveries');
+    shopDeliveriesData = deliveries;
     if (deliveries.length === 0) {
       tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#666">Aucune livraison trouvée</td></tr>';
       return;
@@ -1483,22 +1513,32 @@ async function loadShopDeliveries() {
   }
 }
 
-/* v1.8.0 : MAJ delivery_person + delivery_phone */
+/* v1.8.1 : Modal livraison propre */
 async function editDelivery(id) {
-  const status = prompt('Nouveau statut (pending/shipped/delivered/cancelled):', 'shipped');
-  if (!status) return;
-  const deliveryPerson = prompt('Nom du livreur (optionnel):', '');
-  const deliveryPhone = prompt('Téléphone du livreur (optionnel):', '');
-  try {
-    const payload = { id, status };
-    if (deliveryPerson) payload.delivery_person = deliveryPerson;
-    if (deliveryPhone) payload.delivery_phone = deliveryPhone;
-    await shopUpdateDelivery(payload);
-    showToast('Livraison mise à jour', 'success');
-    loadShopDeliveries();
-  } catch (err) {
-    if (!err.handled) showToast(err.message, 'error');
-  }
+  const d = shopDeliveriesData.find(x => x.id === id);
+  if (!d) { showToast('Livraison introuvable', 'error'); return; }
+  openDeliveryModal(d);
+}
+
+/* ========== MODAL LIVRAISON v1.8.1 ========== */
+function openDeliveryModal(delivery) {
+  const modal = document.getElementById('modal-delivery-overlay');
+  if (!modal) return;
+  document.getElementById('delivery-edit-id').value = delivery.id || '';
+  document.getElementById('delivery-order-number').textContent = delivery.order_number || '#' + delivery.id;
+  document.getElementById('delivery-status').value = delivery.status || 'pending';
+  document.getElementById('delivery-tracking').value = delivery.tracking_number || '';
+  document.getElementById('delivery-person').value = delivery.delivery_person || '';
+  document.getElementById('delivery-phone').value = delivery.delivery_phone || '';
+  document.getElementById('delivery-estimated').value = delivery.estimated_date ? delivery.estimated_date.split('T')[0] : '';
+  modal.classList.add('active');
+}
+
+function closeDeliveryModal() {
+  const modal = document.getElementById('modal-delivery-overlay');
+  if (modal) modal.classList.remove('active');
+  const form = document.getElementById('form-delivery');
+  if (form) form.reset();
 }
 
 /* —— PAIEMENTS —— */
