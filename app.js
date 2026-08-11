@@ -1,9 +1,15 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.7.4 (match backend v2.9.3)
+   v1.8.0 build 31 (match backend v2.9.5+)
    Module SHOP intégré : Catalogue, Panier, Commandes, Fournisseurs,
    Livraisons, Paiements, Factures, Stocks
+   Changelog v1.8.0 :
+   - Parser réponse enrichie shopCreateOrder (auto-facture, auto-livraison)
+   - Afficher livraisons multiples dans viewShopOrder
+   - Colonnes Fournisseur/Livreur dans loadShopDeliveries
+   - MAJ delivery_person/phone dans editDelivery
+   - Nouveaux statuts loadShopOrders (processing/shipped/delivered/cancelled)
    ============================================================ */
 
 const API_BASE_URL = localStorage.getItem('api_url') || 'https://coalition509-api.onrender.com';
@@ -27,7 +33,6 @@ function normaliserTel(tel) {
   t = t.replace(/\s/g, '').replace(/-/g, '').replace(/\./g, '').replace(/\(/g, '').replace(/\)/g, '');
   if (t.startsWith('+')) t = '00' + t.slice(1);
   if (t.startsWith('225') && !t.startsWith('00225')) t = '00' + t;
-  if (t.startsWith('509') && !t.startsWith('00509')) t = '00' + t;
   return t;
 }
 
@@ -431,16 +436,14 @@ function initAuthPage() {
 let botChartInstance = null;
 
 function initDashboardPage() {
-  console.log('[INIT] Dashboard v1.7.3 starting...');
+  console.log('[INIT] Dashboard v1.8.0 starting...');
   if (!getToken()) { window.location.href = 'index.html'; return; }
-  // Injecte CSS dynamique pour cacher les sous-onglets Shop inactifs (évite conflit avec style.css)
   if (!document.getElementById('shop-tab-css')) {
     const s = document.createElement('style');
     s.id = 'shop-tab-css';
     s.textContent = '.shop-tab-content { display: none !important; } .shop-tab-content.active { display: block !important; }';
     document.head.appendChild(s);
   }
-  // FIX v1.6.4: init display sous-onglets Shop
   document.querySelectorAll('.shop-tab-content').forEach(c => {
     if (!c.classList.contains('active')) c.style.display = 'none';
     else c.style.display = 'block';
@@ -564,7 +567,6 @@ async function loadUserInfo() {
     showToast('Erreur de chargement du profil', 'error');
   }
 }
-
 function setupNavigation() {
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', (e) => {
@@ -651,8 +653,6 @@ async function loadOverview() {
 
     const progressEl = document.getElementById('coalition-progress');
     const progressText = document.getElementById('coalition-text');
-    // La barre de progression représente le nombre d'animateurs NGD (utilisateurs actifs)
-    // sur un objectif de 232 groupes locaux à créer
     const totalGroups = stats.total_groups || stats.total_users || stats.total_campaigns || 0;
     if (progressEl) {
       progressEl.style.width = Math.min((totalGroups / 232) * 100, 100) + '%';
@@ -671,7 +671,6 @@ async function loadOverview() {
   } catch (err) {
     console.error('[OVERVIEW] CATCH:', err);
     if (err.handled) { console.log('[OVERVIEW] err.handled=true, returning silently'); return; }
-    // Fallback silencieux : affiche 0 partout pour ne pas bloquer le dashboard
     container.innerHTML =
       renderStatCard({ value: '0', label: 'Utilisateurs actifs', icon: '👥', type: 'primary' }) +
       renderStatCard({ value: '0', label: 'Campagnes actives', icon: '📢', type: 'success' }) +
@@ -933,7 +932,7 @@ window.setApiUrl = function(url) {
 };
 
 /* ============================================================
-   MODULE SHOP
+   MODULE SHOP  v1.8.0
    ============================================================ */
 
 let currentShopTab = 'catalogue';
@@ -941,7 +940,6 @@ let shopProducts = [];
 let shopSuppliers = [];
 
 function setupShopListeners() {
-  // Tabs internes shop
   document.querySelectorAll('.shop-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.remove('active'));
@@ -960,17 +958,11 @@ function setupShopListeners() {
     });
   });
 
-  // Filtres produits
   document.getElementById('prod-filter-apply')?.addEventListener('click', loadShopCatalogue);
-
-  // Filtre stock
   document.getElementById('stock-filter-apply')?.addEventListener('click', loadShopStock);
-
-  // Boutons admin
   document.getElementById('btn-add-product')?.addEventListener('click', () => openProductModal());
   document.getElementById('btn-add-supplier')?.addEventListener('click', () => openSupplierModal());
 
-  // Modal product
   document.getElementById('modal-product-close')?.addEventListener('click', () => document.getElementById('modal-product-overlay')?.classList.remove('active'));
   document.getElementById('modal-product-cancel')?.addEventListener('click', () => document.getElementById('modal-product-overlay')?.classList.remove('active'));
   document.getElementById('form-product')?.addEventListener('submit', async (e) => {
@@ -1006,7 +998,6 @@ function setupShopListeners() {
     }
   });
 
-  // Modal supplier
   document.getElementById('modal-supplier-close')?.addEventListener('click', () => document.getElementById('modal-supplier-overlay')?.classList.remove('active'));
   document.getElementById('modal-supplier-cancel')?.addEventListener('click', () => document.getElementById('modal-supplier-overlay')?.classList.remove('active'));
   document.getElementById('form-supplier')?.addEventListener('submit', async (e) => {
@@ -1042,10 +1033,8 @@ function setupShopListeners() {
     }
   });
 
-  // Modal order detail
   document.getElementById('modal-order-detail-close')?.addEventListener('click', () => document.getElementById('modal-order-detail-overlay')?.classList.remove('active'));
 
-  // Modal payment (legacy)
   document.getElementById('form-payment')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const oid = document.getElementById('pay-order-id')?.value;
@@ -1061,7 +1050,6 @@ function setupShopListeners() {
     }
   });
 
-  // Modal stock
   document.getElementById('modal-stock-close')?.addEventListener('click', () => document.getElementById('modal-stock-overlay')?.classList.remove('active'));
   document.getElementById('modal-stock-cancel')?.addEventListener('click', () => document.getElementById('modal-stock-overlay')?.classList.remove('active'));
   document.getElementById('form-stock')?.addEventListener('submit', async (e) => {
@@ -1082,7 +1070,6 @@ function setupShopListeners() {
     }
   });
 
-  // Panier actions
   document.getElementById('btn-clear-cart')?.addEventListener('click', async () => {
     try { await shopClearCart(); showToast('Panier vidé', 'success'); loadShopCart(); }
     catch (err) { if (!err.handled) showToast(err.message, 'error'); }
@@ -1188,8 +1175,6 @@ async function loadShopCatalogue() {
       '</div>';
     }).join('');
 
-    // Gestion fallback images — ibb.co retourne parfois une page HTML (200 OK)
-    // donc onerror ne se déclenche pas. On vérifie après 2s si l'image a chargé.
     grid.querySelectorAll('img[data-fallback]').forEach(img => {
       img.onerror = function() {
         this.onerror = null;
@@ -1298,7 +1283,7 @@ function updateCartBadge(count) {
   }
 }
 
-/* —— COMMANDES —— */
+/* —— COMMANDES  v1.8.0 : nouveaux statuts —— */
 async function loadShopOrders() {
   const tbody = document.getElementById('shop-orders-table-body');
   tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
@@ -1309,12 +1294,20 @@ async function loadShopOrders() {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucune commande trouvée</td></tr>';
       return;
     }
-    tbody.innerHTML = orders.map(o =>
-      '<tr>' +
+    tbody.innerHTML = orders.map(o => {
+      let statusLabel = o.status;
+      let statusType = 'info';
+      if (o.status === 'pending') { statusLabel = 'En attente'; statusType = 'warning'; }
+      else if (o.status === 'processing') { statusLabel = 'En traitement'; statusType = 'info'; }
+      else if (o.status === 'shipped') { statusLabel = 'Expédiée'; statusType = 'primary'; }
+      else if (o.status === 'delivered') { statusLabel = 'Livrée'; statusType = 'success'; }
+      else if (o.status === 'completed') { statusLabel = 'Terminée'; statusType = 'success'; }
+      else if (o.status === 'cancelled') { statusLabel = 'Annulée'; statusType = 'danger'; }
+      return '<tr>' +
         '<td><strong>#' + (o.order_number || '') + '</strong></td>' +
         '<td>' + (o.user?.first_name || '') + ' ' + (o.user?.last_name || '') + '<br><small>' + (o.user?.phone || '') + '</small></td>' +
         '<td>' + formatCurrency(o.total_amount) + '</td>' +
-        '<td>' + renderBadge(o.status === 'pending' ? 'En attente' : o.status === 'completed' ? 'Terminée' : o.status, o.status === 'pending' ? 'warning' : o.status === 'completed' ? 'success' : 'info') + '</td>' +
+        '<td>' + renderBadge(statusLabel, statusType) + '</td>' +
         '<td>' + renderBadge(o.payment_status === 'paid' ? 'Payé' : o.payment_status || 'En attente', o.payment_status === 'paid' ? 'success' : 'warning') + '</td>' +
         '<td>' + formatDate(o.created_at) + '</td>' +
         '<td style="text-align:right">' +
@@ -1322,29 +1315,52 @@ async function loadShopOrders() {
           (isAdmin() ? '<button class="btn btn-sm btn-primary" onclick="showPaymentModal(' + o.id + ', ' + (o.total_amount || 0) + ')">💳</button> ' : '') +
           (isAdmin() ? '<button class="btn btn-sm btn-danger" onclick="deleteShopOrder(' + o.id + ')">🗑️</button>' : '') +
         '</td>' +
-      '</tr>'
-    ).join('');
+      '</tr>';
+    }).join('');
   } catch (err) {
     if (!err.handled) tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>';
   }
 }
 
+/* v1.8.0 : affiche livraisons multiples + auto-facture/livraison */
 async function viewShopOrder(id) {
   try {
     const data = await shopGetOrder(id);
     const o = data.order;
     const items = (o.items || []).map(it => '<li>' + it.product_name + ' x' + it.quantity + ' = ' + formatCurrency(it.total_price) + '</li>').join('');
-    const inv = o.invoice ? '<p><strong>Facture:</strong> ' + o.invoice.invoice_number + ' (' + formatCurrency(o.invoice.amount) + ') — ' + o.invoice.status + '</p>' : '<p><em>Aucune facture</em></p>';
-    const del = o.delivery ? '<p><strong>Livraison:</strong> ' + o.delivery.status + (o.delivery.tracking_number ? ' (N° ' + o.delivery.tracking_number + ')' : '') + '</p>' : '<p><em>Aucune livraison</em></p>';
+
+    let invHtml = '<p><em>Aucune facture</em></p>';
+    if (o.invoice) {
+      invHtml = '<p><strong>Facture:</strong> ' + o.invoice.invoice_number + ' (' + formatCurrency(o.invoice.amount) + ') — ' + renderBadge(o.invoice.status === 'paid' ? 'Payée' : 'En attente', o.invoice.status === 'paid' ? 'success' : 'warning') + '</p>';
+    } else if (data.invoice) {
+      invHtml = '<p><strong>Facture auto:</strong> ' + data.invoice.invoice_number + ' (' + formatCurrency(data.invoice.amount) + ') — ' + renderBadge(data.invoice.status === 'paid' ? 'Payée' : 'En attente', data.invoice.status === 'paid' ? 'success' : 'warning') + '</p>';
+    }
+
+    let delHtml = '<p><em>Aucune livraison</em></p>';
+    const deliveries = o.deliveries || (o.delivery ? [o.delivery] : []) || (data.delivery ? [data.delivery] : []) || (data.deliveries || []);
+    if (deliveries.length > 0) {
+      delHtml = '<p><strong>Livraison(s):</strong></p><ul style="margin:0 0 12px 18px;">' +
+        deliveries.map(d => '<li>' + renderBadge(d.status === 'delivered' ? 'Livrée' : d.status === 'shipped' ? 'Expédiée' : d.status === 'pending' ? 'En attente' : d.status, d.status === 'delivered' ? 'success' : d.status === 'shipped' ? 'primary' : 'warning') +
+        (d.tracking_number ? ' (N° ' + d.tracking_number + ')' : '') +
+        (d.delivery_person ? ' — Livreur: ' + d.delivery_person : '') +
+        (d.delivery_phone ? ' (' + d.delivery_phone + ')' : '') +
+        '</li>').join('') + '</ul>';
+    }
+
+    let autoInfo = '';
+    if (data.supplier) autoInfo += '<p><strong>Fournisseur auto:</strong> ' + data.supplier.name + '</p>';
+    if (data.delivery_person) autoInfo += '<p><strong>Livreur auto:</strong> ' + data.delivery_person + (data.delivery_phone ? ' (' + data.delivery_phone + ')' : '') + '</p>';
+
     document.getElementById('order-detail-body').innerHTML =
       '<p><strong>N°:</strong> ' + o.order_number + '</p>' +
       '<p><strong>Client:</strong> ' + (o.user?.first_name || '') + ' ' + (o.user?.last_name || '') + '</p>' +
       '<p><strong>Montant:</strong> ' + formatCurrency(o.total_amount) + '</p>' +
       '<p><strong>Statut:</strong> ' + o.status + '</p>' +
       '<p><strong>Paiement:</strong> ' + o.payment_status + '</p>' +
+      autoInfo +
       '<hr style="margin:12px 0;border:none;border-top:1px solid #e8eaed;">' +
       '<p><strong>Articles:</strong></p><ul style="margin:0 0 12px 18px;">' + items + '</ul>' +
-      inv + del;
+      invHtml + delHtml;
     document.getElementById('modal-order-detail-overlay').classList.add('active');
   } catch (err) {
     if (!err.handled) showToast(err.message, 'error');
@@ -1434,40 +1450,55 @@ function updateSupplierSelects() {
   sel.value = current;
 }
 
-/* —— LIVRAISONS —— */
+/* —— LIVRAISONS  v1.8.0 : colonnes Fournisseur + Livreur —— */
 async function loadShopDeliveries() {
   const tbody = document.getElementById('deliveries-table-body');
-  tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
   try {
     const data = await shopListDeliveries({ limit: 50 });
     const deliveries = normalizeList(data, 'deliveries');
     if (deliveries.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucune livraison trouvée</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#666">Aucune livraison trouvée</td></tr>';
       return;
     }
-    tbody.innerHTML = deliveries.map(d =>
-      '<tr>' +
+    tbody.innerHTML = deliveries.map(d => {
+      let statusLabel = d.status === 'delivered' ? 'Livrée' : d.status === 'shipped' ? 'Expédiée' : d.status === 'pending' ? 'En attente' : d.status;
+      let statusType = d.status === 'delivered' ? 'success' : d.status === 'shipped' ? 'primary' : 'warning';
+      return '<tr>' +
         '<td><strong>#' + (d.order_number || '') + '</strong></td>' +
-        '<td>' + renderBadge(d.status === 'delivered' ? 'Livrée' : d.status === 'pending' ? 'En attente' : d.status, d.status === 'delivered' ? 'success' : d.status === 'pending' ? 'warning' : 'info') + '</td>' +
+        '<td>' + renderBadge(statusLabel, statusType) + '</td>' +
         '<td>' + (d.tracking_number || '—') + '</td>' +
         '<td>' + (d.address || '—') + '</td>' +
         '<td>' + (d.region || '—') + (d.commune ? ', ' + d.commune : '') + '</td>' +
         '<td>' + (d.estimated_date || '—') + '</td>' +
+        '<td>' + (d.supplier_name || '—') + '</td>' +
+        '<td>' + (d.delivery_person || '—') + (d.delivery_phone ? '<br><small>' + d.delivery_phone + '</small>' : '') + '</td>' +
         '<td style="text-align:right">' +
           (isAdmin() ? '<button class="btn btn-sm btn-secondary" onclick="editDelivery(' + d.id + ')">✏️</button>' : '') +
         '</td>' +
-      '</tr>'
-    ).join('');
+      '</tr>';
+    }).join('');
   } catch (err) {
-    if (!err.handled) tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>';
+    if (!err.handled) tbody.innerHTML = '<tr><td colspan="9" class="alert alert-error">' + err.message + '</td></tr>';
   }
 }
 
+/* v1.8.0 : MAJ delivery_person + delivery_phone */
 async function editDelivery(id) {
   const status = prompt('Nouveau statut (pending/shipped/delivered/cancelled):', 'shipped');
   if (!status) return;
-  try { await shopUpdateDelivery({ id, status }); showToast('Livraison mise à jour', 'success'); loadShopDeliveries(); }
-  catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+  const deliveryPerson = prompt('Nom du livreur (optionnel):', '');
+  const deliveryPhone = prompt('Téléphone du livreur (optionnel):', '');
+  try {
+    const payload = { id, status };
+    if (deliveryPerson) payload.delivery_person = deliveryPerson;
+    if (deliveryPhone) payload.delivery_phone = deliveryPhone;
+    await shopUpdateDelivery(payload);
+    showToast('Livraison mise à jour', 'success');
+    loadShopDeliveries();
+  } catch (err) {
+    if (!err.handled) showToast(err.message, 'error');
+  }
 }
 
 /* —— PAIEMENTS —— */
