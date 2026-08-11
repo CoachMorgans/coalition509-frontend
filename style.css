@@ -1192,3 +1192,26 @@ tbody tr:last-child td {
   font-size: 10px;
   padding: 3px 8px;
 }
+
+/* ===== v1.8.1 : Modal Livraison ===== */
+#modal-delivery-overlay .modal {
+  max-width: 520px;
+}
+#delivery-status {
+  cursor: pointer;
+  font-size: 14px;
+}
+#delivery-status option {
+  font-size: 14px;
+  padding: 6px;
+}
+#delivery-order-number {
+  font-size: 15px;
+  padding: 10px 14px;
+  background: #f8f9fb;
+  border-radius: 10px;
+  border: 1px solid #eef0f4;
+}
+#form-delivery .form-group label .required {
+  color: #228B22;
+}
