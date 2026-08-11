@@ -1,5 +1,5 @@
 /* ============================================================
- Coalition 509 — Frontend SaaS | Style CSS v1.7.4
+ Coalition 509 — Frontend SaaS | Style CSS v1.8.0
  VoteConnect Ecosystem | ChallengeFinancier™
  Palette : Jaune — Blanc — Vert  |  Mobile-First Dashboard
  ============================================================ */
@@ -218,7 +218,7 @@ form {
 }
 
 /* ============================================================
-   DASHBOARD STYLES  v1.7.1  — Jaune Blanc Vert | Mobile-First
+   DASHBOARD STYLES  v1.8.0  — Jaune Blanc Vert | Mobile-First
    ============================================================ */
 
 /* ── DASHBOARD BODY ── */
@@ -302,8 +302,8 @@ form {
   padding: 24px 20px 16px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-
-.sidebar-header h2 {
+.sidebar-header
+h2 {
   font-size: 20px;
   font-weight: 800;
   margin-bottom: 4px;
@@ -1081,7 +1081,7 @@ tbody tr:last-child td {
   }
 }
 
-/* ===== CHANTIER STYLES ADDITIONNELS v1.7.0 ===== */
+/* ===== CHANTIER STYLES ADDITIONNELS v1.7.x → v1.8.0 ===== */
 
 /* Payment Wave button */
 #pay-wave-btn {
@@ -1142,8 +1142,7 @@ tbody tr:last-child td {
   }
 }
 
-
-/* ===== CHANTIER v1.7.4 : Qty Selector + Wave 1-clic ===== */
+/* ===== CHANTIER v1.7.4 / v1.8.0 : Qty Selector + Wave 1-clic ===== */
 .qty-selector {
   display: flex;
   align-items: center;
@@ -1173,4 +1172,23 @@ tbody tr:last-child td {
 #btn-pay-wave:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(14,122,150,0.35);
+}
+
+/* ===== v1.8.0 : Livraisons enrichies (table 9 colonnes) ===== */
+#deliveries-table-body td {
+  font-size: 12px;
+}
+#deliveries-table-body td:nth-child(8) small {
+  color: #888;
+  font-size: 11px;
+}
+
+/* ===== v1.8.0 : Order detail livraisons multiples ===== */
+#order-detail-body ul li {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+#order-detail-body ul li .badge {
+  font-size: 10px;
+  padding: 3px 8px;
 }
