@@ -5,7 +5,7 @@
   <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Coalition 509 — Tableau de bord</title>
-  <link rel="stylesheet" href="style.css?v=31">
+  <link rel="stylesheet" href="style.css?v=32">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   .shop-tab-content { display: none !important; }
@@ -474,6 +474,37 @@
     </div>
   </div>
 
+  <!-- MODAL: Edit Delivery -->
+  <div class="modal-overlay" id="modal-delivery-overlay">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header"><h3>🚚 Modifier la livraison</h3><button class="modal-close" id="modal-delivery-close">&times;</button></div>
+      <div class="modal-body">
+        <form id="form-delivery">
+          <input type="hidden" id="delivery-edit-id">
+          <div class="form-group"><label>N° Commande</label><div id="delivery-order-number" style="font-weight:600;color:#0d1f0d;">—</div></div>
+          <div class="form-group"><label>Statut <span class="required">*</span></label>
+            <select id="delivery-status" required style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;background:#fff;">
+              <option value="pending">🟡 En attente</option>
+              <option value="shipped">🔵 Expédié</option>
+              <option value="delivered">🟢 Livré</option>
+              <option value="cancelled">🔴 Annulé</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Numéro de tracking</label><input type="text" id="delivery-tracking" placeholder="Ex: TRK123456789" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="form-group" style="margin-bottom:0;"><label>Nom du livreur</label><input type="text" id="delivery-person" placeholder="Prénom Nom" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Téléphone livreur</label><input type="tel" id="delivery-phone" placeholder="0022507XXXXXXXX" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          </div>
+          <div class="form-group"><label>Date estimée de livraison</label><input type="date" id="delivery-estimated" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;"></div>
+          <div class="modal-footer" style="padding:0;border:none;">
+            <button type="button" class="btn btn-secondary" id="modal-delivery-cancel">Annuler</button>
+            <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Stock -->
   <div class="modal-overlay" id="modal-stock-overlay">
     <div class="modal" style="max-width:420px;">
@@ -501,6 +532,6 @@
   </div>
   <!-- TOAST -->
   <div id="toast-container"></div>
-  <script src="app.js?v=31"></script>
+  <script src="app.js?v=32"></script>
 </body>
 </html>
