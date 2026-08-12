@@ -1,5 +1,5 @@
 /* ============================================================
- Coalition 509 — Frontend SaaS | Style CSS v1.8.0
+ Coalition 509 — Frontend SaaS | Style CSS v1.8.2
  VoteConnect Ecosystem | ChallengeFinancier™
  Palette : Jaune — Blanc — Vert  |  Mobile-First Dashboard
  ============================================================ */
@@ -218,7 +218,7 @@ form {
 }
 
 /* ============================================================
-   DASHBOARD STYLES  v1.8.0  — Jaune Blanc Vert | Mobile-First
+   DASHBOARD STYLES  v1.8.2  — Jaune Blanc Vert | Mobile-First
    ============================================================ */
 
 /* ── DASHBOARD BODY ── */
@@ -1081,7 +1081,7 @@ tbody tr:last-child td {
   }
 }
 
-/* ===== CHANTIER STYLES ADDITIONNELS v1.7.x → v1.8.0 ===== */
+/* ===== CHANTIER STYLES ADDITIONNELS v1.7.x → v1.8.2 ===== */
 
 /* Payment Wave button */
 #pay-wave-btn {
@@ -1142,7 +1142,7 @@ tbody tr:last-child td {
   }
 }
 
-/* ===== CHANTIER v1.7.4 / v1.8.0 : Qty Selector + Wave 1-clic ===== */
+/* ===== CHANTIER v1.7.4 / v1.8.2 : Qty Selector + Wave 1-clic ===== */
 .qty-selector {
   display: flex;
   align-items: center;
@@ -1174,7 +1174,7 @@ tbody tr:last-child td {
   box-shadow: 0 6px 16px rgba(14,122,150,0.35);
 }
 
-/* ===== v1.8.0 : Livraisons enrichies (table 9 colonnes) ===== */
+/* ===== v1.8.2 : Livraisons enrichies (table 9 colonnes) ===== */
 #deliveries-table-body td {
   font-size: 12px;
 }
@@ -1183,7 +1183,7 @@ tbody tr:last-child td {
   font-size: 11px;
 }
 
-/* ===== v1.8.0 : Order detail livraisons multiples ===== */
+/* ===== v1.8.2 : Order detail livraisons multiples ===== */
 #order-detail-body ul li {
   margin-bottom: 6px;
   font-size: 13px;
@@ -1193,7 +1193,7 @@ tbody tr:last-child td {
   padding: 3px 8px;
 }
 
-/* ===== v1.8.1 : Modal Livraison ===== */
+/* ===== v1.8.2 : Modal Livraison ===== */
 #modal-delivery-overlay .modal {
   max-width: 520px;
 }
@@ -1214,4 +1214,21 @@ tbody tr:last-child td {
 }
 #form-delivery .form-group label .required {
   color: #228B22;
+}
+
+/* ===== v1.8.2 : Tracking number display ===== */
+.tracking-number {
+  font-family: 'Courier New', monospace;
+  background: #f0f4f0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0d1f0d;
+  border: 1px solid #d1d5db;
+}
+.tracking-missing {
+  color: #888;
+  font-style: italic;
+  font-size: 12px;
 }
