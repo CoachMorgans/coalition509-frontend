@@ -1,7 +1,11 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.8.2 build 33 (match backend v2.9.5+)
+   v1.8.3 build 34 (match backend v2.9.7+)
+   Changelog v1.8.3 (29/09/2026) :
+   - Fix routage GitHub Pages : connexion auto via lien Bot Challenger (bot_auth)
+   - Connexion manuelle toujours active si le lien est expiré
+   - Notifications visibles sur la page de connexion (conteneur créé si absent)
    Changelog v1.8.2 :
    - Fix badge 'primary' inexistant → 'info' (3 endroits)
    - Auto-génération N° tracking (generateTrackingNumber + bouton admin)
@@ -41,7 +45,8 @@ function showAlert(message, type, container) {
   setTimeout(() => div.remove(), 5000);
 }
 function showToast(message, type) {
-  const container = document.getElementById('toast-container'); if (!container) return;
+  let container = document.getElementById('toast-container');
+  if (!container) { container = document.createElement('div'); container.id = 'toast-container'; document.body.appendChild(container); } // v1.8.3 : la page de connexion n'en avait pas
   const toast = document.createElement('div'); toast.className = 'toast'; toast.textContent = message;
   const colors = { success: '#228B22', error: '#e60023', info: '#3b82f6', warning: '#f59e0b' };
   toast.style.borderLeftColor = colors[type] || colors.info; container.appendChild(toast);
@@ -115,30 +120,22 @@ function renderStatCard(opts) {
 function renderBadge(text, type) { return '<span class="badge badge-' + type + '">' + text + '</span>'; }
 
 /* INIT */
+/* v1.8.3 — Routage robuste : sur GitHub Pages l'adresse est
+   /coalition509-frontend/ (sans index.html). L'ancienne condition
+   (path === '/' ou 'index.html') n'était jamais vraie → la page de
+   connexion ne s'initialisait pas et le lien bot_auth du Bot Challenger
+   était ignoré. On décide désormais d'après la page réellement affichée. */
 document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
-  if (path.includes('index.html') || path === '/' || path === '') initAuthPage();
-  else if (path.includes('dashboard.html')) initDashboardPage();
+  if (path.includes('dashboard.html')) initDashboardPage();
+  else if (document.getElementById('login-form') || document.getElementById('auth-container') || path.endsWith('/') || path.includes('index.html')) initAuthPage();
 });
 
 function initAuthPage() {
   const urlParams = new URLSearchParams(window.location.search);
   const botAuth = urlParams.get('bot_auth');
-  if (botAuth) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-    api('/api/v1/auth/verify-bot-token', { method: 'POST', body: JSON.stringify({ token: botAuth }) })
-      .then(data => {
-        if (data.ok && data.access_token) { setToken(data.access_token); if (data.user) setUser(data.user); window.location.href = 'dashboard.html'; }
-        else if (data.needs_registration) {
-          showToast('Veuillez compléter votre inscription', 'info');
-          document.getElementById('mode-user')?.click();
-          if (data.phone) { document.getElementById('reg-phone').value = data.phone; document.getElementById('login-phone').value = data.phone; }
-          document.getElementById('tab-register')?.click();
-        } else { showToast('Lien de connexion invalide ou expiré', 'error'); }
-      }).catch(err => { if (!err.handled) showToast('Erreur de connexion automatique', 'error'); });
-    return;
-  }
-  if (getToken()) { window.location.href = 'dashboard.html'; return; }
+  if (!botAuth && getToken()) { window.location.href = 'dashboard.html'; return; }
+
 
   const loginTab = document.getElementById('tab-login');
   const registerTab = document.getElementById('tab-register');
@@ -178,6 +175,24 @@ function initAuthPage() {
       } catch (err) { if (!err.handled) showAuthError(err.message || 'Erreur lors de l\'inscription'); }
       finally { btn.innerHTML = originalText; btn.disabled = false; }
     });
+  }
+  // Connexion automatique depuis le Bot Challenger (après l'installation des
+  // formulaires : en cas d'échec, la connexion manuelle reste utilisable)
+  if (botAuth) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+    clearAuth(); // on repart d'une session propre
+    showToast('Connexion automatique en cours…', 'info');
+    api('/api/v1/auth/verify-bot-token', { method: 'POST', body: JSON.stringify({ token: botAuth }) })
+      .then(data => {
+        if (data.ok && data.access_token) { setToken(data.access_token); if (data.user) setUser(data.user); window.location.href = 'dashboard.html'; }
+        else if (data.needs_registration) {
+          showToast('Veuillez compléter votre inscription', 'info');
+          modeUser?.click();
+          if (data.phone) { const rp = document.getElementById('reg-phone'); const lp = document.getElementById('login-phone'); if (rp) rp.value = data.phone; if (lp) lp.value = data.phone; }
+          registerTab?.click();
+        } else { showToast(data.error || 'Lien de connexion invalide ou expiré — reconnectez-vous depuis le bot ou avec votre PIN', 'error'); }
+      })
+      .catch(err => { if (!err.handled) showToast((err.message || 'Erreur de connexion automatique') + ' — utilisez votre numéro et votre PIN', 'error'); });
   }
 }
 
