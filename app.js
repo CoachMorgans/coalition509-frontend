@@ -1,7 +1,19 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.8.3 build 34 (match backend v2.9.7+)
+   v1.10.0 build 36 (match backend v2.11.0)
+   Changelog v1.10.0 (15/10/2026) — CANDIDATS TÊTES DE LISTE :
+   - Utilisateurs : recherche, filtre par rôle, colonnes Rôle et Candidature (échappées).
+   - Gestionnaire : « ⭐ Promouvoir Candidat Tête de liste » (candidature + confirmation), « ✏️ Candidature »,
+     « ↩ Retirer » (motif obligatoire) et journal des promotions. Menu Utilisateurs visible du Gestionnaire.
+   - « 📥 CSV Utilisateurs » réservé au Gestionnaire.
+   Changelog v1.9.0 (15/10/2026) — BOUTIQUE SÉCURISÉE :
+   - Boutique visible des Candidats Têtes de liste (rôle admin) ; gestion (catalogue, fournisseurs,
+     stocks, livraisons, validation des paiements) réservée au Gestionnaire VoteConnect (user.gestionnaire).
+   - Paiement : « Commander et payer avec Wave » → lien Wave (marchand Formation, montant pré-rempli)
+     → saisie OBLIGATOIRE de la référence Wave → « À vérifier » → ✅ Valider / ❌ Rejeter par le Gestionnaire.
+   - Retrait des moyens « alternatifs » (MonCash, NatCash, PayPal, Stripe) et du bouton « Marquer payée ».
+   - Statuts lisibles : À payer · À vérifier · Payée · Rejetée · Annulée ; annulation d'une commande non payée.
    Changelog v1.8.3 (29/09/2026) :
    - Fix routage GitHub Pages : connexion auto via lien Bot Challenger (bot_auth)
    - Connexion manuelle toujours active si le lien est expiré
@@ -234,8 +246,12 @@ async function loadUserInfo() {
     const sidebarRole = document.getElementById('sidebar-role'); if (sidebarRole) sidebarRole.textContent = (user.role || 'Utilisateur').toUpperCase();
     const role = (user.role || '').toString().toLowerCase().trim(); const isAdmin = role === 'admin';
     const navUsers = document.getElementById('nav-users'); const navShop = document.getElementById('nav-shop'); const bottomShop = document.getElementById('bottom-nav-shop'); const shopAdminActions = document.getElementById('shop-admin-actions');
-    if (isAdmin) { if (navUsers) { navUsers.style.display = 'flex'; navUsers.classList.remove('hidden'); } if (navShop) { navShop.style.display = 'flex'; navShop.classList.remove('hidden'); } if (bottomShop) { bottomShop.style.display = 'flex'; bottomShop.classList.remove('hidden'); } if (shopAdminActions) shopAdminActions.style.display = 'flex'; }
-    else { if (navUsers) navUsers.style.display = 'none'; if (navShop) navShop.style.display = 'none'; if (bottomShop) bottomShop.style.display = 'none'; if (shopAdminActions) shopAdminActions.style.display = 'none'; }
+    const acheteur = isAcheteur(); const gestionnaire = isGestionnaire();   // v1.9.0
+    if (navUsers) { navUsers.style.display = acheteur ? 'flex' : 'none'; if (acheteur) navUsers.classList.remove('hidden'); }   // v1.10.0 : Candidats + Gestionnaire
+    if (navShop) { navShop.style.display = acheteur ? 'flex' : 'none'; if (acheteur) navShop.classList.remove('hidden'); }
+    if (bottomShop) { bottomShop.style.display = acheteur ? 'flex' : 'none'; if (acheteur) bottomShop.classList.remove('hidden'); }
+    if (shopAdminActions) shopAdminActions.style.display = gestionnaire ? 'flex' : 'none';
+    document.querySelectorAll('.gestionnaire-only').forEach(el => { el.style.display = gestionnaire ? '' : 'none'; });
   } catch (err) { if (err.handled) return; console.error('loadUserInfo error:', err); showToast('Erreur de chargement du profil', 'error'); }
 }
 function setupNavigation() {
@@ -257,7 +273,7 @@ function loadSection(sectionName) {
     case 'campaigns': loadCampaigns(); break; case 'users': loadUsers(); break; case 'shop': loadShop(); break; case 'profile': loadProfile(); break;
   }
 }
-function getSectionTitle(name) { const titles = { overview: '📊 Vue d\'ensemble', campaigns: '📢 Campagnes', users: '👥 Utilisateurs', shop: '🛒 Commandes', profile: '👤 Mon Profil' }; return titles[name] || 'Coalition 509'; }
+function getSectionTitle(name) { const titles = { overview: '📊 Vue d\'ensemble', campaigns: '📢 Campagnes', users: '👥 Utilisateurs', shop: '🛒 Boutique', profile: '👤 Mon Profil' }; return titles[name] || 'Coalition 509'; }
 
 async function loadOverview() {
   const container = document.getElementById('overview-stats'); if (!container) return;
@@ -328,12 +344,84 @@ async function viewCampaign(id) {
     document.getElementById('modal-campaign-detail-overlay').classList.add('active');
   } catch (err) { if (!err.handled) showToast('Erreur chargement détails campagne', 'error'); }
 }
-async function loadUsers() {
-  const tbody = document.getElementById('users-table-body'); tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
-  try { const response = await listUsers({ limit: 50 }); const users = normalizeList(response, 'users'); if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucun utilisateur trouvé</td></tr>'; return; }
-    tbody.innerHTML = users.map(u => '<tr><td><strong>' + (u.first_name || '') + ' ' + (u.last_name || '') + '</strong><br><small style="color:#666">' + (u.ngd_id || '—') + '</small></td><td>' + (u.phone || '—') + '</td><td>' + (u.email || '—') + '</td><td>' + (u.profile_type || '—') + '</td><td>' + (u.region || '—') + '</td><td>' + renderBadge(u.status === 'active' ? 'Actif' : u.status, u.status === 'active' ? 'success' : 'danger') + '</td><td>' + formatDate(u.created_at) + '</td></tr>').join('');
-  } catch (err) { if (err.handled) return; tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>'; }
+/* ===== v1.10.0 : Utilisateurs & Candidats Têtes de liste ===== */
+let usersCache = {};
+function libelleRole(u) {
+  const r = (u.role || 'user').toLowerCase();
+  let b = r === 'admin' ? renderBadge('⭐ Candidat Tête de liste', 'success') : r === 'superadmin' ? renderBadge('Superadmin', 'info') : renderBadge('Citoyen en formation', 'secondary');
+  if (u.gestionnaire) b += ' ' + renderBadge('🛡️ Gestionnaire', 'info');
+  return b;
 }
+function actionsUtilisateur(u) {
+  const me = getUser(); const r = (u.role || 'user').toLowerCase();
+  if (r === 'superadmin') return '—';
+  if (r === 'admin') {
+    let h = '<button class="btn btn-sm btn-secondary" data-role-action="edit" data-user-id="' + u.id + '">✏️ Candidature</button>';
+    if (u.id !== me.id) h += ' <button class="btn btn-sm btn-danger" data-role-action="demote" data-user-id="' + u.id + '">↩ Retirer</button>';
+    return h;
+  }
+  if ((u.status || 'active') !== 'active') return '<small style="color:#888">Compte inactif</small>';
+  return '<button class="btn btn-sm btn-primary" data-role-action="promote" data-user-id="' + u.id + '">⭐ Promouvoir Candidat Tête de liste</button>';
+}
+async function loadUsers() {
+  const tbody = document.getElementById('users-table-body'); const gest = isGestionnaire(); const cols = 6;
+  document.querySelectorAll('#section-users .gestionnaire-only').forEach(el => { el.style.display = gest ? '' : 'none'; });
+  tbody.innerHTML = '<tr><td colspan="' + cols + '" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
+  const params = { limit: 200 }; const s = document.getElementById('users-search')?.value.trim(); const role = document.getElementById('users-role-filter')?.value;
+  if (s) params.search = s; if (role) params.role = role;
+  try { const response = await listUsers(params); const users = normalizeList(response, 'users'); usersCache = {}; users.forEach(u => { usersCache[u.id] = u; });
+    const cnt = document.getElementById('users-count'); if (cnt) cnt.textContent = users.length + ' compte(s) affiché(s)' + (response.total > users.length ? ' sur ' + response.total + ' — affinez la recherche' : '');
+    if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="' + cols + '" style="text-align:center;padding:40px;color:#666">Aucun utilisateur trouvé</td></tr>'; }
+    else tbody.innerHTML = users.map(u => '<tr><td><strong>' + esc(((u.first_name || '') + ' ' + (u.last_name || '')).trim() || '—') + '</strong><br><small style="color:#666">' + esc(u.ngd_id || '—') + (u.region ? ' · ' + esc(u.region) : '') + '</small>' + ((u.status || 'active') !== 'active' ? '<br>' + renderBadge(esc(u.status === 'inactive' ? 'Inactif' : u.status), 'danger') : '') + '</td><td>' + esc(u.phone || '—') + '</td><td>' + libelleRole(u) + '</td><td>' + esc(u.candidature || '—') + '</td><td>' + formatDate(u.created_at) + '</td>' + (gest ? '<td style="white-space:nowrap">' + actionsUtilisateur(u) + '</td>' : '') + '</tr>').join('');
+    if (gest) loadRoleHistory();
+  } catch (err) { if (err.handled) return; tbody.innerHTML = '<tr><td colspan="' + cols + '" class="alert alert-error">' + esc(err.message) + '</td></tr>'; }
+}
+async function loadRoleHistory() {
+  const tbody = document.getElementById('role-history-body'); if (!tbody) return;
+  try { const d = await api('/api/users/role-history'); const rows = d.history || [];
+    const lib = { promotion: renderBadge('⭐ Promotion', 'success'), mise_a_jour: renderBadge('✏️ Candidature modifiée', 'info'), retrait: renderBadge('↩ Retrait', 'danger') };
+    tbody.innerHTML = rows.length ? rows.map(x => '<tr><td>' + formatDate(x.created_at) + '</td><td>' + (lib[x.action] || esc(x.action)) + '</td><td>' + esc(x.user) + '</td><td>' + esc(x.candidature || '—') + '</td><td>' + esc(x.motif || '—') + '</td><td>' + esc(x.par) + '</td></tr>').join('')
+      : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#666">Aucune promotion pour le moment</td></tr>';
+  } catch (err) { if (!err.handled) tbody.innerHTML = '<tr><td colspan="6" class="alert alert-error">' + esc(err.message) + '</td></tr>'; }
+}
+function ouvrirModalRole(mode, u) {
+  document.getElementById('role-user-id').value = u.id; document.getElementById('role-mode').value = mode;
+  const nom = ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.phone;
+  document.getElementById('role-user-info').innerHTML = '<strong>' + esc(nom) + '</strong><br>' + esc(u.phone || '') + (u.region ? ' · ' + esc(u.region) : '') + (u.candidature ? '<br><small>Candidature actuelle : ' + esc(u.candidature) + '</small>' : '');
+  const promote = mode !== 'demote';
+  document.getElementById('role-group-promote').style.display = promote ? '' : 'none';
+  document.getElementById('role-group-demote').style.display = promote ? 'none' : '';
+  document.getElementById('role-candidature').value = u.candidature || ''; document.getElementById('role-confirme').checked = false; document.getElementById('role-motif').value = '';
+  document.getElementById('modal-role-title').textContent = mode === 'demote' ? '↩ Retirer le statut Candidat Tête de liste' : mode === 'edit' ? '✏️ Modifier la candidature' : '⭐ Promouvoir Candidat Tête de liste';
+  const btn = document.getElementById('role-submit'); btn.textContent = mode === 'demote' ? '↩ Retirer le statut' : mode === 'edit' ? '💾 Enregistrer' : '⭐ Promouvoir';
+  btn.className = 'btn ' + (mode === 'demote' ? 'btn-danger' : 'btn-primary');
+  document.getElementById('modal-role-overlay').classList.add('active');
+  setTimeout(() => document.getElementById(promote ? 'role-candidature' : 'role-motif')?.focus(), 50);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const fermer = () => document.getElementById('modal-role-overlay')?.classList.remove('active');
+  document.getElementById('modal-role-close')?.addEventListener('click', fermer);
+  document.getElementById('modal-role-cancel')?.addEventListener('click', fermer);
+  document.getElementById('users-search-btn')?.addEventListener('click', loadUsers);
+  document.getElementById('users-search')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadUsers(); } });
+  document.getElementById('users-role-filter')?.addEventListener('change', loadUsers);
+  document.getElementById('users-table-body')?.addEventListener('click', e => {
+    const b = e.target.closest('[data-role-action]'); if (!b) return; const u = usersCache[b.dataset.userId]; if (u) ouvrirModalRole(b.dataset.roleAction, u);
+  });
+  document.getElementById('form-role')?.addEventListener('submit', async (e) => {
+    e.preventDefault(); const id = Number(document.getElementById('role-user-id').value); const mode = document.getElementById('role-mode').value; const btn = document.getElementById('role-submit');
+    let url, body;
+    if (mode === 'demote') { const motif = document.getElementById('role-motif').value.trim(); if (motif.length < 3) { showToast('Indiquez le motif du retrait', 'warning'); return; } url = '/api/users/demote'; body = { user_id: id, motif }; }
+    else { const cand = document.getElementById('role-candidature').value.trim(); const conf = document.getElementById('role-confirme').checked;
+      if (cand.length < 3) { showToast('Indiquez la liste et la circonscription', 'warning'); return; }
+      if (!conf) { showToast('Cochez la confirmation « Candidat Tête de liste officiel »', 'warning'); return; }
+      url = '/api/users/promote'; body = { user_id: id, candidature: cand, confirme: true }; }
+    btn.disabled = true;
+    try { const d = await api(url, { method: 'POST', body: JSON.stringify(body) }); showToast(d.message || 'Enregistré', 'success'); fermer(); loadUsers(); }
+    catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+    finally { btn.disabled = false; }
+  });
+});
 async function loadProfile() {
   let user = getUser();
   try { const fresh = await getMe(); const freshUser = fresh.user || fresh; if (freshUser && freshUser.id) { setUser(freshUser); user = freshUser; } } catch (e) { if (e.handled) return; console.warn('getMe failed in loadProfile:', e.message); }
@@ -356,6 +444,52 @@ let shopSuppliers = [];
 let shopDeliveriesData = [];
 
 function isAdmin() { return (getUser().role || '').toString().toLowerCase().trim() === 'admin'; }
+/* v1.9.0 — droits Boutique fournis par l'API (champs user.acheteur / user.gestionnaire) */
+function isAcheteur() { const u = getUser(); const role = (u.role || '').toString().toLowerCase().trim(); return u.acheteur === true || role === 'admin' || role === 'superadmin'; }
+function isGestionnaire() { return getUser().gestionnaire === true; }
+const WAVE_MARCHAND_FORMATION = 'M_ci_QlW5ke-hYGbA';
+function lienWave(montant) { return 'https://pay.wave.com/m/' + WAVE_MARCHAND_FORMATION + '/c/ci/?amount=' + Math.round(montant || 0); }
+function libellePaiement(ps) {
+  const T = { pending: ['À payer', 'warning'], declared: ['À vérifier', 'info'], paid: ['Payée', 'success'], rejected: ['Rejetée', 'danger'], cancelled: ['Annulée', 'danger'] };
+  const t = T[ps] || [ps || 'À payer', 'warning']; return renderBadge(t[0], t[1]);
+}
+function libelleCommande(st) {
+  const T = { pending: ['En attente', 'warning'], confirmed: ['Confirmée', 'success'], processing: ['En traitement', 'info'], shipped: ['Expédiée', 'info'], delivered: ['Livrée', 'success'], completed: ['Terminée', 'success'], cancelled: ['Annulée', 'danger'] };
+  const t = T[st] || [st || '—', 'info']; return renderBadge(t[0], t[1]);
+}
+function libelleLivraison(st) {
+  const T = { awaiting_payment: ['Attente paiement', 'warning'], pending: ['À préparer', 'warning'], processing: ['En préparation', 'info'], shipped: ['Expédiée', 'info'], delivered: ['Livrée', 'success'], cancelled: ['Annulée', 'danger'] };
+  const t = T[st] || [st || '—', 'info']; return renderBadge(t[0], t[1]);
+}
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+/* Boutons d'action d'une commande selon le rôle et l'état du paiement */
+function actionsPaiement(o) {
+  const u = getUser(); const proprio = u.id && (o.user_id === u.id || (o.user && o.user.id === u.id)); let h = '';
+  if (proprio && (o.payment_status === 'pending' || o.payment_status === 'rejected')) {
+    h += '<button class="btn btn-sm btn-primary" onclick="showPaymentModal(' + o.id + ', ' + (o.total_amount || 0) + ', \'' + esc(o.order_number || '') + '\', \'' + esc((o.payment_note || '').replace(/'/g, ' ')) + '\')">💳 Payer</button> ';
+    h += '<button class="btn btn-sm btn-secondary" onclick="annulerCommande(' + o.id + ')">✖ Annuler</button> ';
+  }
+  if (isGestionnaire() && o.payment_status === 'declared') {
+    h += '<button class="btn btn-sm btn-primary" onclick="validerPaiement(' + o.id + ')">✅ Valider</button> ';
+    h += '<button class="btn btn-sm btn-danger" onclick="rejeterPaiement(' + o.id + ')">❌ Rejeter</button> ';
+  }
+  return h;
+}
+async function validerPaiement(id) {
+  if (!confirm('Avez-vous vérifié dans l\'application Wave (marchand Formation) que ce paiement est bien arrivé, pour le bon montant ?')) return;
+  try { await api('/api/shop/orders/validate-payment', { method: 'POST', body: JSON.stringify({ id, decision: 'valider' }) }); showToast('Paiement validé : commande confirmée, livraison lancée', 'success'); refreshShopTab(); }
+  catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+}
+async function rejeterPaiement(id) {
+  const motif = prompt('Motif du rejet (ex. référence introuvable dans Wave, montant incorrect) :', 'Référence introuvable dans Wave'); if (motif === null) return;
+  try { await api('/api/shop/orders/validate-payment', { method: 'POST', body: JSON.stringify({ id, decision: 'rejeter', motif }) }); showToast('Paiement rejeté : le candidat peut saisir une nouvelle référence', 'warning'); refreshShopTab(); }
+  catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+}
+async function annulerCommande(id) {
+  if (!confirm('Annuler cette commande non payée ?')) return;
+  try { await api('/api/shop/orders/cancel', { method: 'POST', body: JSON.stringify({ id }) }); showToast('Commande annulée', 'success'); refreshShopTab(); }
+  catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+}
 
 /* v1.8.2 : auto-génération N° tracking */
 function generateTrackingNumber() {
@@ -412,9 +546,12 @@ function setupShopListeners() {
   document.getElementById('modal-order-detail-close')?.addEventListener('click', () => document.getElementById('modal-order-detail-overlay')?.classList.remove('active'));
 
   document.getElementById('form-payment')?.addEventListener('submit', async (e) => {
-    e.preventDefault(); const oid = document.getElementById('pay-order-id')?.value; const method = document.getElementById('pay-method')?.value; if (!oid) return;
-    try { await api('/api/orders/pay', { method: 'POST', body: JSON.stringify({ id: oid, payment_method: method }) }); showToast('Paiement enregistré', 'success'); document.getElementById('modal-payment-overlay')?.classList.remove('active'); loadShopOrders(); }
+    e.preventDefault(); const oid = document.getElementById('pay-order-id')?.value; const ref = (document.getElementById('pay-reference')?.value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!oid) return;
+    if (ref.length < 6 || ref.length > 30) { showToast('Référence Wave invalide : 6 à 30 lettres ou chiffres, telle qu\'elle figure sur votre reçu Wave', 'error'); return; }
+    const btn = e.target.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+    try { await api('/api/shop/orders/declare-payment', { method: 'POST', body: JSON.stringify({ id: Number(oid), reference: ref }) }); showToast('Référence reçue : paiement en cours de vérification par VoteConnect', 'success'); document.getElementById('modal-payment-overlay')?.classList.remove('active'); refreshShopTab(); }
     catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+    finally { if (btn) btn.disabled = false; }
   });
 
   document.getElementById('modal-stock-close')?.addEventListener('click', () => document.getElementById('modal-stock-overlay')?.classList.remove('active'));
@@ -426,12 +563,13 @@ function setupShopListeners() {
   });
 
   document.getElementById('btn-clear-cart')?.addEventListener('click', async () => { try { await shopClearCart(); showToast('Panier vidé', 'success'); loadShopCart(); } catch (err) { if (!err.handled) showToast(err.message, 'error'); } });
-  document.getElementById('btn-checkout')?.addEventListener('click', async () => { try { await shopCreateOrder({ region: getUser().region || '', commune: getUser().commune || '' }); showToast('Commande créée avec succès !', 'success'); loadShopCart(); loadShopOrders(); } catch (err) { if (!err.handled) showToast(err.message, 'error'); } });
-  document.getElementById('btn-pay-wave')?.addEventListener('click', async () => {
+  document.getElementById('btn-pay-wave')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
     try { const user = getUser(); const data = await shopCreateOrder({ region: user.region || '', commune: user.commune || '' }); const order = data.order;
-      if (order && order.total_amount > 0) { const waveUrl = 'https://pay.wave.com/m/M_ci_QlW5ke-hYGbA/c/ci/?amount=' + Math.round(order.total_amount) + '&reference=C509-' + (order.order_number || order.id); window.open(waveUrl, '_blank'); showToast('Commande #' + order.order_number + ' créée — finalisez sur Wave', 'success'); loadShopCart(); loadShopOrders(); }
+      if (order && order.total_amount > 0) { showToast('Commande #' + order.order_number + ' créée — payez avec Wave puis saisissez la référence', 'success'); loadShopCart(); showPaymentModal(order.id, order.total_amount, order.order_number, '', data.wave_url); }
       else { showToast('Panier vide ou montant invalide', 'warning'); }
     } catch (err) { if (!err.handled) showToast(err.message, 'error'); }
+    finally { btn.disabled = false; }
   });
 
   document.getElementById('modal-delivery-close')?.addEventListener('click', closeDeliveryModal);
@@ -468,7 +606,7 @@ async function loadShopCatalogue() {
     const data = await shopListProducts(params, controller.signal); clearTimeout(apiTimeout); clearTimeout(timeoutId);
     shopProducts = normalizeList(data, 'products');
     if (shopProducts.length === 0) { grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">Aucun produit trouvé</p>'; return; }
-    grid.innerHTML = shopProducts.map(p => { const low = (p.stock_quantity || 0) <= 5; return '<div class="product-card" style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;"><div style="height:140px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">' + (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;" data-fallback="📦">' : '<span style="font-size:48px;">📦</span>') + '</div><div><h4 style="margin:0;font-size:15px;">' + (p.name || '') + '</h4><small style="color:#888;">' + (p.category || '') + '</small></div><div style="font-weight:700;color:#228B22;font-size:16px;">' + formatCurrency(p.price) + '</div><div style="font-size:12px;color:' + (low ? '#e60023' : '#666') + ';">Stock: ' + (p.stock_quantity || 0) + (low ? ' ⚠️' : '') + '</div><div class="qty-selector"><button class="btn btn-sm btn-secondary" onclick="adjustQty(' + p.id + ', -1)">−</button><input type="number" id="qty-' + p.id + '" value="1" min="1" max="99"><button class="btn btn-sm btn-secondary" onclick="adjustQty(' + p.id + ', 1)">+</button></div><div style="display:flex;gap:6px;margin-top:auto;"><button class="btn btn-sm btn-primary" onclick="addToCart(' + p.id + ')" style="flex:1;">🛒 Ajouter</button>' + (isAdmin() ? '<button class="btn btn-sm btn-secondary" onclick="editProduct(' + p.id + ')">✏️</button>' : '') + '</div></div>'; }).join('');
+    grid.innerHTML = shopProducts.map(p => { const low = (p.stock_quantity || 0) <= 5; return '<div class="product-card" style="background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;"><div style="height:140px;background:#f5f5f5;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;">' + (p.image_url ? '<img src="' + p.image_url + '" style="width:100%;height:100%;object-fit:cover;" data-fallback="📦">' : '<span style="font-size:48px;">📦</span>') + '</div><div><h4 style="margin:0;font-size:15px;">' + (p.name || '') + '</h4><small style="color:#888;">' + (p.category || '') + '</small></div><div style="font-weight:700;color:#228B22;font-size:16px;">' + formatCurrency(p.price) + '</div><div style="font-size:12px;color:' + (low ? '#e60023' : '#666') + ';">Stock: ' + (p.stock_quantity || 0) + (low ? ' ⚠️' : '') + '</div><div class="qty-selector"><button class="btn btn-sm btn-secondary" onclick="adjustQty(' + p.id + ', -1)">−</button><input type="number" id="qty-' + p.id + '" value="1" min="1" max="99"><button class="btn btn-sm btn-secondary" onclick="adjustQty(' + p.id + ', 1)">+</button></div><div style="display:flex;gap:6px;margin-top:auto;"><button class="btn btn-sm btn-primary" onclick="addToCart(' + p.id + ')" style="flex:1;">🛒 Ajouter</button>' + (isGestionnaire() ? '<button class="btn btn-sm btn-secondary" onclick="editProduct(' + p.id + ')">✏️</button>' : '') + '</div></div>'; }).join('');
     grid.querySelectorAll('img[data-fallback]').forEach(img => { img.onerror = function() { this.onerror = null; this.parentElement.innerHTML = '<span style="font-size:48px;">' + this.dataset.fallback + '</span>'; }; setTimeout(() => { if (img.naturalWidth === 0 || img.naturalHeight === 0) { img.onerror = null; img.parentElement.innerHTML = '<span style="font-size:48px;">' + img.dataset.fallback + '</span>'; } }, 2500); });
     updateSupplierSelects();
   } catch (err) { clearTimeout(timeoutId); if (apiTimeout) clearTimeout(apiTimeout); if (!err.handled && grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e60023;">' + (err.message || 'Erreur catalogue') + '</p>'; }
@@ -509,18 +647,9 @@ async function loadShopOrders() {
   try {
     const data = await shopListOrders({ limit: 50 }); const orders = normalizeList(data, 'orders');
     if (orders.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucune commande trouvée</td></tr>'; return; }
-    const currentUser = getUser();
     tbody.innerHTML = orders.map(o => {
-      let statusLabel = o.status; let statusType = 'info';
-      if (o.status === 'pending') { statusLabel = 'En attente'; statusType = 'warning'; }
-      else if (o.status === 'processing') { statusLabel = 'En traitement'; statusType = 'info'; }
-      else if (o.status === 'shipped') { statusLabel = 'Expédiée'; statusType = 'info'; }
-      else if (o.status === 'delivered') { statusLabel = 'Livrée'; statusType = 'success'; }
-      else if (o.status === 'completed') { statusLabel = 'Terminée'; statusType = 'success'; }
-      else if (o.status === 'cancelled') { statusLabel = 'Annulée'; statusType = 'danger'; }
-      const isOwner = currentUser.id && (o.user_id === currentUser.id || o.user?.id === currentUser.id);
-      const canPay = (isAdmin() || isOwner) && o.payment_status !== 'paid';
-      return '<tr><td><strong>#' + (o.order_number || '') + '</strong></td><td>' + (o.user?.first_name || '') + ' ' + (o.user?.last_name || '') + '<br><small>' + (o.user?.phone || '') + '</small></td><td>' + formatCurrency(o.total_amount) + '</td><td>' + renderBadge(statusLabel, statusType) + '</td><td>' + renderBadge(o.payment_status === 'paid' ? 'Payé' : o.payment_status || 'En attente', o.payment_status === 'paid' ? 'success' : 'warning') + '</td><td>' + formatDate(o.created_at) + '</td><td style="text-align:right"><button class="btn btn-sm btn-secondary" onclick="viewShopOrder(' + o.id + ')">👁️</button> ' + (canPay ? '<button class="btn btn-sm btn-primary" onclick="showPaymentModal(' + o.id + ', ' + (o.total_amount || 0) + ')">💳</button> ' : '') + (isAdmin() ? '<button class="btn btn-sm btn-danger" onclick="deleteShopOrder(' + o.id + ')">🗑️</button>' : '') + '</td></tr>';
+      const suppr = isGestionnaire() && ['pending', 'rejected', 'cancelled'].includes(o.payment_status);
+      return '<tr><td><strong>#' + esc(o.order_number || '') + '</strong></td><td>' + esc(o.user?.first_name || '') + ' ' + esc(o.user?.last_name || '') + '<br><small>' + esc(o.user?.phone || '') + '</small></td><td>' + formatCurrency(o.total_amount) + '</td><td>' + libelleCommande(o.status) + '</td><td>' + libellePaiement(o.payment_status) + (o.wave_reference ? '<br><small>Réf. ' + esc(o.wave_reference) + '</small>' : '') + '</td><td>' + formatDate(o.created_at) + '</td><td style="text-align:right"><button class="btn btn-sm btn-secondary" onclick="viewShopOrder(' + o.id + ')">👁️</button> ' + actionsPaiement(o) + (suppr ? '<button class="btn btn-sm btn-danger" onclick="deleteShopOrder(' + o.id + ')">🗑️</button>' : '') + '</td></tr>';
     }).join('');
   } catch (err) { if (!err.handled) tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>'; }
 }
@@ -531,27 +660,31 @@ async function viewShopOrder(id) {
     const data = await shopGetOrder(id); const o = data.order;
     const items = (o.items || []).map(it => '<li>' + it.product_name + ' x' + it.quantity + ' = ' + formatCurrency(it.total_price) + '</li>').join('');
     let invHtml = '<p><em>Aucune facture</em></p>';
-    if (o.invoice) { invHtml = '<p><strong>Facture:</strong> ' + o.invoice.invoice_number + ' (' + formatCurrency(o.invoice.amount) + ') — ' + renderBadge(o.invoice.status === 'paid' ? 'Payée' : 'En attente', o.invoice.status === 'paid' ? 'success' : 'warning') + '</p>'; }
+    if (o.invoice) { invHtml = '<p><strong>Facture:</strong> ' + o.invoice.invoice_number + ' (' + formatCurrency(o.invoice.amount) + ') — ' + renderBadge(o.invoice.status === 'paid' ? 'Payée' : o.invoice.status === 'cancelled' ? 'Annulée' : 'En attente', o.invoice.status === 'paid' ? 'success' : o.invoice.status === 'cancelled' ? 'danger' : 'warning') + '</p>'; }
     else if (data.invoice) { invHtml = '<p><strong>Facture auto:</strong> ' + data.invoice.invoice_number + ' (' + formatCurrency(data.invoice.amount) + ') — ' + renderBadge(data.invoice.status === 'paid' ? 'Payée' : 'En attente', data.invoice.status === 'paid' ? 'success' : 'warning') + '</p>'; }
     let delHtml = '<p><em>Aucune livraison</em></p>';
     const deliveries = o.deliveries || (o.delivery ? [o.delivery] : []) || (data.delivery ? [data.delivery] : []) || (data.deliveries || []);
     if (deliveries.length > 0) {
-      delHtml = '<p><strong>Livraison(s):</strong></p><ul style="margin:0 0 12px 18px;">' + deliveries.map(d => '<li>' + renderBadge(d.status === 'delivered' ? 'Livrée' : d.status === 'shipped' ? 'Expédiée' : d.status === 'pending' ? 'En attente' : d.status, d.status === 'delivered' ? 'success' : d.status === 'shipped' ? 'info' : 'warning') + (d.tracking_number ? ' (N° ' + d.tracking_number + ')' : '') + (d.delivery_person ? ' — Livreur: ' + d.delivery_person : '') + (d.delivery_phone ? ' (' + d.delivery_phone + ')' : '') + '</li>').join('') + '</ul>';
+      delHtml = '<p><strong>Livraison(s):</strong></p><ul style="margin:0 0 12px 18px;">' + deliveries.map(d => '<li>' + libelleLivraison(d.status) + (d.tracking_number ? ' (N° ' + d.tracking_number + ')' : '') + (d.delivery_person ? ' — Livreur: ' + d.delivery_person : '') + (d.delivery_phone ? ' (' + d.delivery_phone + ')' : '') + '</li>').join('') + '</ul>';
     }
     let autoInfo = ''; if (data.supplier) autoInfo += '<p><strong>Fournisseur auto:</strong> ' + data.supplier.name + '</p>'; if (data.delivery_person) autoInfo += '<p><strong>Livreur auto:</strong> ' + data.delivery_person + (data.delivery_phone ? ' (' + data.delivery_phone + ')' : '') + '</p>';
     let trackingBtn = '';
-    if (isAdmin() && deliveries.length > 0) {
+    if (isGestionnaire() && o.payment_status === 'paid' && deliveries.length > 0) {
       const hasTracking = deliveries.some(d => d.tracking_number);
       if (!hasTracking) { trackingBtn = '<div style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="generateAndAssignTracking(' + o.id + ')">🎲 Générer N° tracking</button></div>'; }
     }
-    document.getElementById('order-detail-body').innerHTML = '<p><strong>N°:</strong> ' + o.order_number + '</p><p><strong>Client:</strong> ' + (o.user?.first_name || '') + ' ' + (o.user?.last_name || '') + '</p><p><strong>Montant:</strong> ' + formatCurrency(o.total_amount) + '</p><p><strong>Statut:</strong> ' + o.status + '</p><p><strong>Paiement:</strong> ' + o.payment_status + '</p>' + autoInfo + '<hr style="margin:12px 0;border:none;border-top:1px solid #e8eaed;"><p><strong>Articles:</strong></p><ul style="margin:0 0 12px 18px;">' + items + '</ul>' + invHtml + delHtml + trackingBtn;
+    document.getElementById('order-detail-body').innerHTML = '<p><strong>N°:</strong> ' + esc(o.order_number) + '</p><p><strong>Client:</strong> ' + esc(o.user?.first_name || '') + ' ' + esc(o.user?.last_name || '') + '</p><p><strong>Montant:</strong> ' + formatCurrency(o.total_amount) + '</p><p><strong>Statut:</strong> ' + libelleCommande(o.status) + '</p><p><strong>Paiement Wave (Formation):</strong> ' + libellePaiement(o.payment_status) + (o.wave_reference ? ' — Réf. <strong>' + esc(o.wave_reference) + '</strong>' : '') + '</p>' + (o.payment_note ? '<p style="color:#a61b1b;"><strong>Note:</strong> ' + esc(o.payment_note) + '</p>' : '') + '<div style="margin:8px 0;">' + actionsPaiement(o) + '</div>' + autoInfo + '<hr style="margin:12px 0;border:none;border-top:1px solid #e8eaed;"><p><strong>Articles:</strong></p><ul style="margin:0 0 12px 18px;">' + items + '</ul>' + invHtml + delHtml + trackingBtn;
     document.getElementById('modal-order-detail-overlay').classList.add('active');
   } catch (err) { if (!err.handled) showToast(err.message, 'error'); }
 }
 async function deleteShopOrder(id) { if (!confirm('Supprimer cette commande ?')) return; try { await shopDeleteOrder(id); showToast('Commande supprimée', 'success'); loadShopOrders(); } catch (err) { if (!err.handled) showToast(err.message, 'error'); } }
-function showPaymentModal(orderId, amount) {
+function showPaymentModal(orderId, amount, orderNumber, note, waveUrl) {
   const modal = document.getElementById('modal-payment-overlay'); const orderInput = document.getElementById('pay-order-id'); const amountDiv = document.getElementById('pay-amount'); const waveBtn = document.getElementById('pay-wave-btn');
-  if (orderInput) orderInput.value = orderId || ''; if (amountDiv) amountDiv.textContent = formatCurrency(amount); if (waveBtn) { waveBtn.href = 'https://pay.wave.com/m/M_ci_QlW5ke-hYGbA/c/ci/?amount=' + Math.round(amount || 0) + '&reference=C509-' + (orderId || '0'); waveBtn.style.display = 'inline-flex'; }
+  if (orderInput) orderInput.value = orderId || ''; if (amountDiv) amountDiv.textContent = formatCurrency(amount);
+  const num = document.getElementById('pay-order-number'); if (num) num.textContent = orderNumber ? '#' + orderNumber : '';
+  const ref = document.getElementById('pay-reference'); if (ref) ref.value = '';
+  const noteDiv = document.getElementById('pay-note'); if (noteDiv) { noteDiv.textContent = note ? '⚠️ ' + note + ' — vérifiez votre reçu Wave et saisissez la bonne référence.' : ''; noteDiv.style.display = note ? 'block' : 'none'; }
+  if (waveBtn) { waveBtn.href = waveUrl || lienWave(amount); waveBtn.style.display = 'inline-flex'; }
   if (modal) modal.classList.add('active');
 }
 
@@ -559,7 +692,7 @@ function showPaymentModal(orderId, amount) {
 async function loadShopSuppliers() {
   const tbody = document.getElementById('suppliers-table-body'); tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
   try { const data = await shopListSuppliers({ limit: 50 }); shopSuppliers = normalizeList(data, 'suppliers'); if (shopSuppliers.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucun fournisseur trouvé</td></tr>'; return; }
-    tbody.innerHTML = shopSuppliers.map(s => '<tr><td><strong>' + (s.name || '') + '</strong></td><td>' + (s.contact_name || '—') + '</td><td>' + (s.phone || '—') + '</td><td>' + (s.email || '—') + '</td><td>' + (s.region || '—') + (s.commune ? ', ' + s.commune : '') + '</td><td>' + renderBadge(s.status === 'active' ? 'Actif' : s.status, s.status === 'active' ? 'success' : 'warning') + '</td><td style="text-align:right">' + (isAdmin() ? '<button class="btn btn-sm btn-secondary" onclick="editSupplier(' + s.id + ')">✏️</button> ' : '') + (isAdmin() ? '<button class="btn btn-sm btn-danger" onclick="deleteSupplier(' + s.id + ')">🗑️</button>' : '') + '</td></tr>').join(''); updateSupplierSelects();
+    tbody.innerHTML = shopSuppliers.map(s => '<tr><td><strong>' + (s.name || '') + '</strong></td><td>' + (s.contact_name || '—') + '</td><td>' + (s.phone || '—') + '</td><td>' + (s.email || '—') + '</td><td>' + (s.region || '—') + (s.commune ? ', ' + s.commune : '') + '</td><td>' + renderBadge(s.status === 'active' ? 'Actif' : s.status, s.status === 'active' ? 'success' : 'warning') + '</td><td style="text-align:right">' + (isGestionnaire() ? '<button class="btn btn-sm btn-secondary" onclick="editSupplier(' + s.id + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteSupplier(' + s.id + ')">🗑️</button>' : '') + '</td></tr>').join(''); updateSupplierSelects();
   } catch (err) { if (!err.handled) tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>'; }
 }
 function openSupplierModal(supplier) {
@@ -574,10 +707,8 @@ async function loadShopDeliveries() {
   const tbody = document.getElementById('deliveries-table-body'); tbody.innerHTML = '<tr><td colspan="9" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
   try { const data = await shopListDeliveries({ limit: 50 }); const deliveries = normalizeList(data, 'deliveries'); shopDeliveriesData = deliveries; if (deliveries.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#666">Aucune livraison trouvée</td></tr>'; return; }
     tbody.innerHTML = deliveries.map(d => {
-      let statusLabel = d.status === 'delivered' ? 'Livrée' : d.status === 'shipped' ? 'Expédiée' : d.status === 'pending' ? 'En attente' : d.status;
-      let statusType = d.status === 'delivered' ? 'success' : d.status === 'shipped' ? 'info' : 'warning';
       const trackingCell = d.tracking_number ? '<span class="tracking-number">' + d.tracking_number + '</span>' : '<span class="tracking-missing">Non attribué</span>';
-      return '<tr><td><strong>#' + (d.order_number || '') + '</strong></td><td>' + renderBadge(statusLabel, statusType) + '</td><td>' + trackingCell + '</td><td>' + (d.address || '—') + '</td><td>' + (d.region || '—') + (d.commune ? ', ' + d.commune : '') + '</td><td>' + (d.estimated_date || '—') + '</td><td>' + (d.supplier_name || '—') + '</td><td>' + (d.delivery_person || '—') + (d.delivery_phone ? '<br><small>' + d.delivery_phone + '</small>' : '') + '</td><td style="text-align:right">' + (isAdmin() ? '<button class="btn btn-sm btn-secondary" onclick="editDelivery(' + d.id + ')">✏️</button>' : '') + '</td></tr>';
+      return '<tr><td><strong>#' + (d.order_number || '') + '</strong></td><td>' + libelleLivraison(d.status) + '</td><td>' + trackingCell + '</td><td>' + (d.address || '—') + '</td><td>' + (d.region || '—') + (d.commune ? ', ' + d.commune : '') + '</td><td>' + (d.estimated_date || '—') + '</td><td>' + (d.supplier_name || '—') + '</td><td>' + (d.delivery_person || '—') + (d.delivery_phone ? '<br><small>' + d.delivery_phone + '</small>' : '') + '</td><td style="text-align:right">' + (isGestionnaire() && !['awaiting_payment', 'cancelled'].includes(d.status) ? '<button class="btn btn-sm btn-secondary" onclick="editDelivery(' + d.id + ')">✏️</button>' : '') + '</td></tr>';
     }).join('');
   } catch (err) { if (!err.handled) tbody.innerHTML = '<tr><td colspan="9" class="alert alert-error">' + err.message + '</td></tr>'; }
 }
@@ -592,7 +723,8 @@ function closeDeliveryModal() { const modal = document.getElementById('modal-del
 async function loadShopPayments() {
   const tbody = document.getElementById('payments-table-body'); tbody.innerHTML = '<tr><td colspan="6" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
   try { const data = await shopListOrders({ limit: 50 }); const orders = normalizeList(data, 'orders'); if (orders.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#666">Aucun paiement trouvé</td></tr>'; return; }
-    tbody.innerHTML = orders.map(o => '<tr><td><strong>#' + (o.order_number || '') + '</strong></td><td>' + formatCurrency(o.total_amount) + '</td><td>' + (o.payment_method || '—') + '</td><td>' + renderBadge(o.payment_status === 'paid' ? 'Payé' : o.payment_status || 'En attente', o.payment_status === 'paid' ? 'success' : 'warning') + '</td><td>' + formatDate(o.created_at) + '</td><td style="text-align:right">' + (isAdmin() && o.payment_status !== 'paid' ? '<button class="btn btn-sm btn-primary" onclick="showPaymentModal(' + o.id + ', ' + (o.total_amount || 0) + ')">💳 Payer</button>' : '') + '</td></tr>').join('');
+    const aVerifier = data.a_verifier; const entete = (isGestionnaire() && aVerifier) ? '<tr><td colspan="6" style="background:#e8f4fd;color:#0e5a8a;font-weight:600;">🔎 ' + aVerifier + ' paiement(s) Wave à vérifier dans l\'application Wave (marchand Formation), puis à valider ou rejeter.</td></tr>' : '';
+    tbody.innerHTML = entete + orders.map(o => '<tr><td><strong>#' + esc(o.order_number || '') + '</strong></td><td>' + formatCurrency(o.total_amount) + '</td><td>Wave Formation' + (o.wave_reference ? '<br><small>Réf. <strong>' + esc(o.wave_reference) + '</strong></small>' : '') + '</td><td>' + libellePaiement(o.payment_status) + '</td><td>' + formatDate(o.payment_declared_at || o.created_at) + '</td><td style="text-align:right">' + actionsPaiement(o) + '</td></tr>').join('');
   } catch (err) { if (!err.handled) tbody.innerHTML = '<tr><td colspan="6" class="alert alert-error">' + err.message + '</td></tr>'; }
 }
 
@@ -600,10 +732,10 @@ async function loadShopPayments() {
 async function loadShopInvoices() {
   const tbody = document.getElementById('invoices-table-body'); tbody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
   try { const data = await shopListInvoices({ limit: 50 }); const invoices = normalizeList(data, 'invoices'); if (invoices.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#666">Aucune facture trouvée</td></tr>'; return; }
-    tbody.innerHTML = invoices.map(inv => '<tr><td><strong>' + (inv.invoice_number || '') + '</strong></td><td>#' + (inv.order_number || '') + '</td><td>' + formatCurrency(inv.amount) + '</td><td>' + renderBadge(inv.status === 'paid' ? 'Payée' : inv.status === 'pending' ? 'En attente' : inv.status, inv.status === 'paid' ? 'success' : inv.status === 'pending' ? 'warning' : 'danger') + '</td><td>' + formatDate(inv.issued_at) + '</td><td>' + (inv.due_date || '—') + '</td><td style="text-align:right">' + (isAdmin() && inv.status !== 'paid' ? '<button class="btn btn-sm btn-primary" onclick="payInvoice(' + inv.id + ')">✅ Marquer payée</button>' : '') + '</td></tr>').join('');
+    tbody.innerHTML = invoices.map(inv => '<tr><td><strong>' + (inv.invoice_number || '') + '</strong></td><td>#' + (inv.order_number || '') + '</td><td>' + formatCurrency(inv.amount) + '</td><td>' + renderBadge(inv.status === 'paid' ? 'Payée' : inv.status === 'pending' ? 'En attente' : inv.status === 'cancelled' ? 'Annulée' : inv.status, inv.status === 'paid' ? 'success' : inv.status === 'pending' ? 'warning' : 'danger') + '</td><td>' + formatDate(inv.issued_at) + '</td><td>' + (inv.due_date || '—') + '</td><td style="text-align:right">' + (inv.paid_at ? '<small>Payée le ' + formatDate(inv.paid_at) + '</small>' : '') + '</td></tr>').join('');
   } catch (err) { if (!err.handled) tbody.innerHTML = '<tr><td colspan="7" class="alert alert-error">' + err.message + '</td></tr>'; }
 }
-async function payInvoice(id) { try { await shopUpdateInvoice({ id, status: 'paid' }); showToast('Facture payée', 'success'); loadShopInvoices(); } catch (err) { if (!err.handled) showToast(err.message, 'error'); } }
+/* v1.9.0 : une facture devient « payée » uniquement par la validation du paiement Wave de sa commande. */
 
 /* —— STOCKS —— */
 async function loadShopStock() {
