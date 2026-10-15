@@ -1,7 +1,9 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.10.0 build 36 (match backend v2.11.0)
+   v1.10.1 build 37 (match backend v2.11.2)
+   Changelog v1.10.1 (15/10/2026) — Utilisateurs : comptes actifs par défaut (comme la Vue d'ensemble),
+     filtre « Comptes inactifs » pour consulter les comptes désactivés.
    Changelog v1.10.0 (15/10/2026) — CANDIDATS TÊTES DE LISTE :
    - Utilisateurs : recherche, filtre par rôle, colonnes Rôle et Candidature (échappées).
    - Gestionnaire : « ⭐ Promouvoir Candidat Tête de liste » (candidature + confirmation), « ✏️ Candidature »,
@@ -368,7 +370,8 @@ async function loadUsers() {
   document.querySelectorAll('#section-users .gestionnaire-only').forEach(el => { el.style.display = gest ? '' : 'none'; });
   tbody.innerHTML = '<tr><td colspan="' + cols + '" class="loading"><span class="spinner"></span> Chargement...</td></tr>';
   const params = { limit: 200 }; const s = document.getElementById('users-search')?.value.trim(); const role = document.getElementById('users-role-filter')?.value;
-  if (s) params.search = s; if (role) params.role = role;
+  if (s) params.search = s;
+  if (role === 'inactifs') params.status = 'inactive'; else { params.status = 'active'; if (role) params.role = role; }   // v1.10.1 : par défaut, comptes actifs seulement
   try { const response = await listUsers(params); const users = normalizeList(response, 'users'); usersCache = {}; users.forEach(u => { usersCache[u.id] = u; });
     const cnt = document.getElementById('users-count'); if (cnt) cnt.textContent = users.length + ' compte(s) affiché(s)' + (response.total > users.length ? ' sur ' + response.total + ' — affinez la recherche' : '');
     if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="' + cols + '" style="text-align:center;padding:40px;color:#666">Aucun utilisateur trouvé</td></tr>'; }

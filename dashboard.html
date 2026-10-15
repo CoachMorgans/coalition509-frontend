@@ -5,7 +5,7 @@
   <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Coalition 509 — Tableau de bord</title>
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   .shop-tab-content { display: none !important; }
@@ -142,9 +142,10 @@
           <div id="users-toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <input type="search" id="users-search" placeholder="Nom, téléphone ou candidature…" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;flex:1 1 220px;width:auto;">
             <select id="users-role-filter" style="padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;width:100%;flex:0 1 230px;width:auto;background:#fff;">
-              <option value="">Tous les comptes</option>
+              <option value="">Comptes actifs</option>
               <option value="admin">⭐ Candidats Têtes de liste</option>
               <option value="user">Citoyens en formation</option>
+              <option value="inactifs">Comptes inactifs</option>
             </select>
             <button class="btn btn-secondary" id="users-search-btn" type="button">🔍 Rechercher</button>
           </div>
@@ -578,6 +579,6 @@
   </div>
   <!-- TOAST -->
   <div id="toast-container"></div>
-  <script src="app.js?v=36"></script>
+  <script src="app.js?v=37"></script>
 </body>
 </html>
