@@ -1,7 +1,9 @@
 /* ============================================================
    COALITION 509 — Frontend Logic
    VoteConnect Ecosystem | ChallengeFinancier™
-   v1.10.1 build 37 (match backend v2.11.2)
+   v1.10.2 build 38 (match backend v2.11.2)
+   Changelog v1.10.2 (15/10/2026) — Graphique « Stats Bot » : Chart.js 4.4.3 servi depuis le dépôt (chart.umd.min.js)
+     au lieu de cdn.jsdelivr.net, bloqué par certains navigateurs ; message neutre si le graphique ne peut pas s'afficher.
    Changelog v1.10.1 (15/10/2026) — Utilisateurs : comptes actifs par défaut (comme la Vue d'ensemble),
      filtre « Comptes inactifs » pour consulter les comptes désactivés.
    Changelog v1.10.0 (15/10/2026) — CANDIDATS TÊTES DE LISTE :
@@ -303,6 +305,7 @@ async function loadBotStats() {
     const lastWeek = week[week.length - 1] || {}; setText('bot-week-leads', lastWeek.leads); setText('bot-week-conversions', lastWeek.conversions); setText('bot-week-messages', lastWeek.messages);
     const lastUpdate = document.getElementById('bot-last-update'); if (lastUpdate) lastUpdate.textContent = new Date().toLocaleString('fr-FR');
     const ctx = document.getElementById('bot-stats-chart'); if (!ctx) return;
+    if (typeof Chart === 'undefined') { const e = document.getElementById('bot-stats-error'); if (e) { e.style.color = '#888'; e.textContent = 'Graphique momentanément indisponible — les chiffres ci-dessus sont à jour.'; } return; }   // v1.10.2
     if (botChartInstance) { botChartInstance.destroy(); botChartInstance = null; }
     const labels = week.map(w => { const d = new Date(w.date); return ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()]; });
     const conversationsData = week.map(w => w.conversations || 0); const leadsData = week.map(w => w.leads || 0);
